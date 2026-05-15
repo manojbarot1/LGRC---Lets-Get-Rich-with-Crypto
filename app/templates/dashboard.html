@@ -249,7 +249,7 @@
   <div class="modal-content">
     <div class="modal-icon">⏸️</div>
     <div class="modal-title">Pause Trading?</div>
-    <p class="modal-text">The trading loop will stop executing trades. Your positions will be held, but Claude won't make new decisions.</p>
+    <p class="modal-text">The trading loop will stop executing trades. Your positions will be held, but the AI won't make new decisions.</p>
     <div class="modal-buttons">
       <button class="btn-modal btn-cancel" onclick="closePauseModal()">Cancel</button>
       <button class="btn-modal btn-confirm" onclick="confirmPause()">Pause</button>
@@ -261,7 +261,7 @@
   <div class="modal-content">
     <div class="modal-icon">▶️</div>
     <div class="modal-title">Resume Trading?</div>
-    <p class="modal-text">Claude will start analyzing the market and executing trades again. All risk rules will be enforced.</p>
+    <p class="modal-text">The AI will start analyzing the market and executing trades again. All risk rules will be enforced.</p>
     <div class="modal-buttons">
       <button class="btn-modal btn-cancel" onclick="closeResumeModal()">Cancel</button>
       <button class="btn-modal btn-confirm" onclick="confirmResume()">Resume</button>
@@ -448,7 +448,7 @@
 <div id="cash-advice-banner" class="card p-5 flex items-start gap-4" style="display:none; border-color: rgba(251, 146, 60, 0.5); background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%);">
   <span class="text-2xl flex-shrink-0">💡</span>
   <div class="flex-1">
-    <div class="font-bold text-orange-300 text-sm mb-1">Claude's Smart Recommendation</div>
+    <div class="font-bold text-orange-300 text-sm mb-1">AI Smart Recommendation</div>
     <p id="cash-advice-text" class="text-sm text-orange-100"></p>
   </div>
 </div>
@@ -600,7 +600,7 @@ async function confirmPause() {
     const badge = document.getElementById('status-badge');
     badge.className = 'badge-paused text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
     badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse-amber"></span>PAUSED';
-    showAlertModal('⏸️', 'Trading Paused', 'Claude will stop analyzing the market.');
+    showAlertModal('⏸️', 'Trading Paused', 'The AI will stop analyzing the market.');
   } else {
     showAlertModal('❌', 'Error', 'Failed to pause trading');
   }
@@ -623,7 +623,7 @@ async function confirmResume() {
     const badge = document.getElementById('status-badge');
     badge.className = 'badge-live text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
     badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>LIVE';
-    showAlertModal('▶️', 'Trading Resumed', 'Claude is now analyzing markets again.');
+    showAlertModal('▶️', 'Trading Resumed', 'The AI is now analyzing markets again.');
   } else {
     showAlertModal('❌', 'Error', 'Failed to resume trading');
   }
