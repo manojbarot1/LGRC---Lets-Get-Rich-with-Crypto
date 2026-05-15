@@ -228,31 +228,122 @@ SECRET_KEY=replace-with-a-long-random-string-64-chars-minimum
 
 Each user configures their own AI provider from the **⚙ AI** button in the dashboard navbar. Settings are stored per-user in the database — no restart needed.
 
-### Anthropic Claude (default)
+### How to Open Settings
+
+1. Log in and open the dashboard at `http://localhost:8100`
+2. Click **⚙ AI** in the top-right navbar
+3. Select your provider, fill in the fields
+4. Click **Test Connection** — wait for ✅ Connected
+5. Click **Save Settings**
+
+> **Important:** Always paste your API key into the **API KEY field** before clicking Test Connection. The test uses whatever is currently typed in the field — not the previously saved key. If the field is blank, the test will fail with 401 Unauthorized even if a key was saved earlier.
+
+---
+
+### Option 1 — Anthropic Claude (paid, includes web search)
+
+Get a key at [console.anthropic.com](https://console.anthropic.com/) → API Keys → Create Key.
 
 | Field | Value |
 |-------|-------|
 | Provider | `Anthropic Claude` |
-| API Key | `sk-ant-...` (from console.anthropic.com) |
-| Model | `claude-sonnet-4-6` (or any Claude model) |
+| API Key | `sk-ant-api03-...` |
+| Model | `claude-sonnet-4-6` |
 
-Claude gets **live web search** to research market news before deciding trades.
+Claude uses **live web search** to research market news before deciding trades — best quality decisions.
 
-### OpenAI-Compatible / Local AI
+---
 
-Any server that implements the OpenAI `/chat/completions` endpoint works:
+### Option 2 — Groq (free tier, fast)
 
-| Server | Base URL | Notes |
-|--------|----------|-------|
-| **Ollama** | `http://localhost:11434/v1` | `ollama pull llama3.2` |
-| **LM Studio** | `http://localhost:1234/v1` | Enable API server in app |
-| **Jan** | `http://localhost:1337/v1` | Enable API server in app |
-| **OpenAI** | `https://api.openai.com/v1` | Use your OpenAI key |
-| **vLLM / Llamafile** | your endpoint | Any OAI-compatible server |
+Sign up free at [console.groq.com](https://console.groq.com) — no credit card required.
 
-Local models analyze the live CoinGecko data provided in the prompt (no web search). The AI prompt adapts automatically based on the selected provider.
+| Field | Value |
+|-------|-------|
+| Provider | `OpenAI Compatible` |
+| Base URL | `https://api.groq.com/openai/v1` |
+| API Key | `gsk_...` (from Groq console) |
+| Model | `llama-3.3-70b-versatile` |
 
-**Test Connection** verifies the settings before saving — a quick ping is sent to the configured endpoint.
+Free tier: **14,400 requests/day** — LGRC uses ~288/day at most, so you'll never hit the limit.
+
+**Other good Groq models:**
+
+| Model | Notes |
+|-------|-------|
+| `llama-3.3-70b-versatile` | Best overall (recommended) |
+| `gemma2-9b-it` | Lighter, very fast |
+| `gemma2-29b-it` | Smarter but slower |
+| `openai/gpt-oss-120b` | OpenAI-compatible reasoning model on Groq |
+| `mixtral-8x7b-32768` | Longer context window |
+
+---
+
+### Option 3 — Google Gemini (free tier)
+
+Get a free key at [aistudio.google.com](https://aistudio.google.com) → Get API Key.
+
+| Field | Value |
+|-------|-------|
+| Provider | `OpenAI Compatible` |
+| Base URL | `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| API Key | your Gemini key |
+| Model | `gemini-1.5-flash` |
+
+Free tier: 15 requests/minute — sufficient for the 5-minute AI cycle.
+
+---
+
+### Option 4 — OpenRouter (free models available)
+
+Sign up at [openrouter.ai](https://openrouter.ai) — several models are permanently free.
+
+| Field | Value |
+|-------|-------|
+| Provider | `OpenAI Compatible` |
+| Base URL | `https://openrouter.ai/api/v1` |
+| API Key | your OpenRouter key |
+| Model | `mistralai/mistral-7b-instruct:free` |
+
+---
+
+### Option 5 — Ollama (completely free, runs locally)
+
+No API key, no limits, no internet required for inference. Needs a modern Mac/PC.
+
+```bash
+# Install Ollama
+brew install ollama          # macOS
+# or download from https://ollama.ai for Windows/Linux
+
+# Pull a model
+ollama pull llama3.2
+```
+
+| Field | Value |
+|-------|-------|
+| Provider | `OpenAI Compatible` |
+| Base URL | `http://host.docker.internal:11434/v1` |
+| API Key | *(leave blank)* |
+| Model | `llama3.2` |
+
+> **Note:** Use `host.docker.internal` (not `localhost`) — Docker containers can't reach `localhost` on your machine directly. On Linux use `http://172.17.0.1:11434/v1` instead.
+
+Other Ollama models to try: `mistral`, `llama3.1`, `phi3`, `qwen2.5`
+
+---
+
+### Provider Comparison
+
+| Provider | Cost | Speed | Quality | Web Search |
+|----------|------|-------|---------|------------|
+| Anthropic Claude | Paid | Medium (30–60s with search) | ⭐⭐⭐⭐⭐ | ✅ Yes |
+| Groq | Free | Fast (1–3s) | ⭐⭐⭐⭐ | ❌ No |
+| Google Gemini | Free | Fast (2–5s) | ⭐⭐⭐⭐ | ❌ No |
+| OpenRouter (free) | Free | Medium | ⭐⭐⭐ | ❌ No |
+| Ollama (local) | Free | Varies | ⭐⭐⭐ | ❌ No |
+
+All providers without web search still get **live CoinGecko price data** (top 20 movers, Fear & Greed index, trending coins) — the AI prompt is adapted automatically.
 
 ---
 
