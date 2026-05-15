@@ -280,6 +280,76 @@
   </div>
 </div>
 
+<!-- ── AI Settings Modal ── -->
+<div id="settingsModal" class="modal">
+  <div class="modal-content" style="max-width:560px; text-align:left;">
+    <div class="flex items-center justify-between mb-6">
+      <div class="modal-title" style="-webkit-text-fill-color:unset; background:none; color:#64b5f6; font-size:22px;">⚙ AI Configuration</div>
+      <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white text-xl leading-none">✕</button>
+    </div>
+
+    <!-- Provider selector -->
+    <div class="mb-5">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Provider</div>
+      <div class="grid grid-cols-2 gap-3">
+        <button id="btn-anthropic" onclick="selectProvider('anthropic')"
+          class="py-3 px-4 rounded-xl border text-sm font-semibold transition text-left">
+          <div class="text-base mb-0.5">🤖 Anthropic Claude</div>
+          <div class="text-xs font-normal text-slate-400">claude-sonnet-4-6 · web search</div>
+        </button>
+        <button id="btn-openai_compat" onclick="selectProvider('openai_compat')"
+          class="py-3 px-4 rounded-xl border text-sm font-semibold transition text-left">
+          <div class="text-base mb-0.5">🦙 OpenAI Compatible</div>
+          <div class="text-xs font-normal text-slate-400">Ollama · LM Studio · Jan · OpenAI</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- API Key -->
+    <div class="mb-4">
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">
+        API Key <span id="key-optional" class="normal-case text-slate-500 font-normal">(optional for local servers)</span>
+      </label>
+      <div class="flex gap-2">
+        <input type="password" id="ai-key" placeholder="Paste new key to replace, leave blank to keep current"
+          class="flex-1 px-4 py-2.5 text-sm">
+        <button onclick="toggleKeyVisibility()" class="px-3 py-2 rounded-lg bg-slate-700/50 border border-slate-600/30 text-slate-300 text-sm hover:bg-slate-600/50 transition">👁</button>
+      </div>
+      <div id="key-status" class="text-xs text-slate-500 mt-1.5"></div>
+    </div>
+
+    <!-- Base URL (OpenAI-compat only) -->
+    <div id="base-url-row" class="mb-4 hidden">
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Base URL</label>
+      <input type="text" id="ai-base-url" placeholder="http://localhost:11434/v1"
+        class="w-full px-4 py-2.5 text-sm">
+      <div class="mt-2 text-xs text-slate-500 space-y-0.5">
+        <div>Ollama: <span class="font-mono text-slate-400">http://localhost:11434/v1</span></div>
+        <div>LM Studio: <span class="font-mono text-slate-400">http://localhost:1234/v1</span></div>
+        <div>Jan: <span class="font-mono text-slate-400">http://localhost:1337/v1</span></div>
+      </div>
+    </div>
+
+    <!-- Model -->
+    <div class="mb-5">
+      <label class="text-xs font-semibold text-slate-400 uppercase tracking-widest block mb-2">Model</label>
+      <input type="text" id="ai-model" placeholder="e.g. claude-sonnet-4-6 or llama3.2"
+        class="w-full px-4 py-2.5 text-sm">
+    </div>
+
+    <!-- Test status -->
+    <div id="test-status" class="text-sm mb-4 min-h-[1.5rem]"></div>
+
+    <!-- Buttons -->
+    <div class="flex gap-3">
+      <button onclick="testAIConnection()" class="flex-1 py-2.5 rounded-lg bg-slate-700/50 border border-slate-500/30 text-slate-200 text-sm font-semibold hover:bg-slate-600/50 transition">Test Connection</button>
+      <button onclick="saveAISettings()" class="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold transition">Save Settings</button>
+    </div>
+
+    <p class="text-xs text-slate-600 mt-4">API key stored in local SQLite database. Not transmitted anywhere except to the configured provider.</p>
+  </div>
+</div>
+
 <!-- ── Header/Nav ── -->
 <nav class="glass sticky top-0 z-20 border-b border-slate-700/50">
   <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -298,6 +368,7 @@
       <span class="text-xs text-slate-400">Up: <span id="uptime" class="text-cyan-300 font-mono font-bold">0m 0s</span></span>
       <span class="text-xs text-slate-400">Price: <span id="next-price" class="text-cyan-300 font-mono font-bold">60s</span></span>
       <span class="text-xs text-slate-400">AI: <span id="next-ai" class="text-cyan-300 font-mono font-bold">4m30s</span></span>
+      <button onclick="openSettingsModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700/50 to-slate-600/50 text-slate-300 hover:from-slate-600/60 hover:to-slate-500/60 border border-slate-500/30 transition font-semibold btn">⚙ AI</button>
       <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸ Pause</button>
       <button id="resume-btn" onclick="showResumeModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600/30 to-green-600/30 text-emerald-300 hover:from-emerald-600/50 hover:to-green-600/50 border border-emerald-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn" disabled>▶ Resume</button>
     </div>
@@ -811,6 +882,115 @@ ws.onerror = () => {
   badge.className = 'badge-paused text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
   badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>DISCONNECTED';
 };
+
+// ── AI Settings Modal ──
+let _currentProvider = 'anthropic';
+
+function selectProvider(p) {
+  _currentProvider = p;
+  const isCompat = p === 'openai_compat';
+
+  document.getElementById('btn-anthropic').className =
+    'py-3 px-4 rounded-xl border text-sm font-semibold transition text-left ' +
+    (p === 'anthropic'
+      ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
+      : 'border-slate-600/40 bg-slate-800/30 text-slate-400 hover:border-slate-500/60');
+  document.getElementById('btn-openai_compat').className =
+    'py-3 px-4 rounded-xl border text-sm font-semibold transition text-left ' +
+    (isCompat
+      ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-300'
+      : 'border-slate-600/40 bg-slate-800/30 text-slate-400 hover:border-slate-500/60');
+
+  document.getElementById('base-url-row').classList.toggle('hidden', !isCompat);
+  document.getElementById('key-optional').classList.toggle('hidden', !isCompat);
+
+  if (p === 'anthropic' && !document.getElementById('ai-model').value) {
+    document.getElementById('ai-model').value = 'claude-sonnet-4-6';
+  }
+}
+
+async function openSettingsModal() {
+  document.getElementById('test-status').textContent = '';
+  document.getElementById('ai-key').value = '';
+  document.getElementById('settingsModal').classList.add('show');
+  try {
+    const res = await fetch('/api/settings/ai');
+    const data = await res.json();
+    selectProvider(data.provider || 'anthropic');
+    document.getElementById('ai-model').value = data.model_name || '';
+    document.getElementById('ai-base-url').value = data.base_url || '';
+    document.getElementById('key-status').textContent =
+      data.api_key_set ? '🔑 Key is set — leave blank to keep it' : '⚠️ No key saved yet';
+  } catch(e) {
+    document.getElementById('key-status').textContent = 'Could not load current settings';
+  }
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function toggleKeyVisibility() {
+  const f = document.getElementById('ai-key');
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+async function testAIConnection() {
+  const statusEl = document.getElementById('test-status');
+  statusEl.textContent = '⏳ Testing connection…';
+  statusEl.className = 'text-sm mb-4 min-h-[1.5rem] text-slate-400';
+  try {
+    const res = await fetch('/api/settings/ai/test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        provider: _currentProvider,
+        api_key: document.getElementById('ai-key').value,
+        base_url: document.getElementById('ai-base-url').value,
+        model_name: document.getElementById('ai-model').value,
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      statusEl.textContent = '✅ ' + data.message;
+      statusEl.className = 'text-sm mb-4 min-h-[1.5rem] text-green-400';
+    } else {
+      statusEl.textContent = '❌ ' + (data.error || 'Connection failed');
+      statusEl.className = 'text-sm mb-4 min-h-[1.5rem] text-red-400';
+    }
+  } catch(e) {
+    statusEl.textContent = '❌ Request failed: ' + e.message;
+    statusEl.className = 'text-sm mb-4 min-h-[1.5rem] text-red-400';
+  }
+}
+
+async function saveAISettings() {
+  try {
+    const res = await fetch('/api/settings/ai', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        provider: _currentProvider,
+        api_key: document.getElementById('ai-key').value,
+        base_url: document.getElementById('ai-base-url').value,
+        model_name: document.getElementById('ai-model').value,
+      }),
+    });
+    if (res.ok) {
+      closeSettingsModal();
+      showAlertModal('✅', 'Settings Saved', 'AI configuration updated. Changes take effect on the next trading cycle.');
+    } else {
+      const d = await res.json();
+      showAlertModal('❌', 'Save Failed', d.error || 'Unknown error');
+    }
+  } catch(e) {
+    showAlertModal('❌', 'Save Failed', e.message);
+  }
+}
+
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('settingsModal')) closeSettingsModal();
+});
 </script>
 </body>
 </html>

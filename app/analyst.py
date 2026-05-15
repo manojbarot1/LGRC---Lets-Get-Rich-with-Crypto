@@ -1,4 +1,9 @@
-"""Claude analyst with web search — decides what to buy, sell, or hold."""
+"""AI analyst — decides what to buy, sell, or hold.
+
+Supports two providers:
+  - anthropic      : Claude via Anthropic SDK with web-search beta
+  - openai_compat  : Any OpenAI-compatible API (Ollama, LM Studio, Jan, OpenAI, etc.)
+"""
 from __future__ import annotations
 
 import json
@@ -7,15 +12,22 @@ import time
 from typing import Any
 
 import anthropic
+import httpx
 import structlog
 
 from app.config import get_settings
 
 log = structlog.get_logger()
 
+_SYSTEM = (
+    "You are a JSON-only API endpoint for a crypto trading simulator. "
+    "Your entire response must be a single valid JSON object with no text, "
+    "explanation, or markdown before or after it."
+)
+
 
 def _extract_json(text: str) -> dict:
-    """Pull the JSON object from a Claude response, trying from the last '{' first."""
+    """Pull the JSON object from an AI response, trying from the last '{' first."""
     try:
         return json.loads(text.strip())
     except Exception:
@@ -26,7 +38,7 @@ def _extract_json(text: str) -> dict:
             return json.loads(m.group(1))
         except Exception:
             pass
-    # Try parsing from each `{`, starting from the last — handles text before JSON
+    # Scan from each `{`, last-first — handles preamble text before JSON
     for match in reversed(list(re.finditer(r'\{', text))):
         try:
             candidate = json.loads(text[match.start():])
@@ -37,16 +49,13 @@ def _extract_json(text: str) -> dict:
     return {"actions": [], "market_view": text[:500]}
 
 
-async def analyze_and_decide(
+def _build_prompt(
     portfolio_cash: float,
     positions: list[dict],
-    market_snapshot: dict[str, Any],
+    market_snapshot: dict,
     settings_dict: dict,
-) -> dict:
-    """Ask Claude (with web search) to decide what trades to make."""
-    settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-
+    has_web_search: bool,
+) -> str:
     total_value = portfolio_cash + sum(
         p["quantity"] * p.get("current_price", p["avg_cost"]) for p in positions
     )
@@ -74,7 +83,18 @@ async def analyze_and_decide(
 
     trending_text = ", ".join(f"{t['symbol']}({t['name']})" for t in trending)
 
-    prompt = f"""You are an elite autonomous crypto trading agent. Your goal: maximize returns aggressively.
+    if has_web_search:
+        task_section = """1. Use web_search to research the market RIGHT NOW:
+   - Search "crypto market today momentum breakout [current top coins]"
+   - Search news on any positions you hold or plan to trade
+   - Check for volume anomalies, breakouts, whale activity"""
+    else:
+        task_section = """1. Analyze the live market data provided above:
+   - The CoinGecko data includes real-time prices, 1h/24h/7d changes, and volume
+   - Focus on strong movers: 1h breakouts, volume spikes, 7d trend continuations
+   - Cross-reference Fear & Greed with price action for conviction"""
+
+    return f"""You are an elite autonomous crypto trading agent. Your goal: maximize returns aggressively.
 
 ═══ PORTFOLIO STATUS ═══
   Net deposited (basis):  ${basis:,.2f}
@@ -103,10 +123,7 @@ Trending (most searched): {trending_text}
   • Take-profit: auto-sell if position up >{settings_dict['take_profit_pct']*100:.0f}%
 
 ═══ YOUR TASK ═══
-1. Use web_search to research the market RIGHT NOW:
-   - Search "crypto market today momentum breakout [current top coins]"
-   - Search news on any positions you hold or plan to trade
-   - Check for volume anomalies, breakouts, whale activity
+{task_section}
 
 2. STRATEGY PLAYBOOK (use whichever fits):
    - MOMENTUM: coins up 5%+ in 1h on rising volume → buy the breakout
@@ -139,51 +156,94 @@ Trending (most searched): {trending_text}
 cash_advice.action must be "ADD", "WITHDRAW", or "NONE".
 Only include HOLD if you want to record it. Only include cash_advice if conviction is strong."""
 
-    _SYSTEM = (
-        "You are a JSON-only API endpoint for a crypto trading simulator. "
-        "Your entire response must be a single valid JSON object with no text, "
-        "explanation, or markdown before or after it."
-    )
+
+async def _call_anthropic(api_key: str, model: str, prompt: str) -> dict:
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    try:
+        response = await client.beta.messages.create(
+            model=model,
+            max_tokens=4096,
+            system=_SYSTEM,
+            betas=["web-search-2025-03-05"],
+            tools=[{"type": "web_search_20250305", "name": "web_search"}],
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        no_search_note = (
+            "\n\nIMPORTANT: Web search is unavailable. "
+            "Analyze the live market data provided above and return ONLY the JSON object."
+        )
+        response = await client.messages.create(
+            model=model,
+            max_tokens=4096,
+            system=_SYSTEM,
+            messages=[{"role": "user", "content": prompt + no_search_note}],
+        )
+    full_text = "\n".join(b.text for b in response.content if hasattr(b, "text") and b.text)
+    return full_text
+
+
+async def _call_openai_compat(api_key: str, base_url: str, model: str, prompt: str) -> str:
+    url = (base_url or "http://localhost:11434/v1").rstrip("/") + "/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    payload = {
+        "model": model or "llama3.2",
+        "messages": [
+            {"role": "system", "content": _SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        "max_tokens": 4096,
+        "temperature": 0.3,
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
+
+
+async def analyze_and_decide(
+    portfolio_cash: float,
+    positions: list[dict],
+    market_snapshot: dict[str, Any],
+    settings_dict: dict,
+    ai_config: dict | None = None,
+) -> dict:
+    """Decide what trades to make using the configured AI provider."""
+    cfg = ai_config or {}
+    app_settings = get_settings()
+
+    provider = cfg.get("provider") or "anthropic"
+    api_key = cfg.get("api_key") or app_settings.anthropic_api_key
+    base_url = cfg.get("base_url") or ""
+    model = cfg.get("model_name") or app_settings.claude_model
+
+    has_web_search = provider == "anthropic"
+    prompt = _build_prompt(portfolio_cash, positions, market_snapshot, settings_dict, has_web_search)
 
     t0 = time.time()
     try:
-        try:
-            response = await client.beta.messages.create(
-                model=settings.claude_model,
-                max_tokens=4096,
-                system=_SYSTEM,
-                betas=["web-search-2025-03-05"],
-                tools=[{"type": "web_search_20250305", "name": "web_search"}],
-                messages=[{"role": "user", "content": prompt}],
-            )
-        except Exception:
-            no_search_note = (
-                "\n\nIMPORTANT: Web search is unavailable. "
-                "Analyze the live market data provided above and return ONLY the JSON object."
-            )
-            response = await client.messages.create(
-                model=settings.claude_model,
-                max_tokens=4096,
-                system=_SYSTEM,
-                messages=[{"role": "user", "content": prompt + no_search_note}],
-            )
+        if provider == "anthropic":
+            full_text = await _call_anthropic(api_key, model, prompt)
+        else:
+            full_text = await _call_openai_compat(api_key, base_url, model, prompt)
 
-        full_text = "\n".join(
-            b.text for b in response.content if hasattr(b, "text") and b.text
-        )
         result = _extract_json(full_text)
         result.setdefault("actions", [])
         result.setdefault("market_view", "")
         result.setdefault("cash_advice", {"action": "NONE"})
 
-        log.info("analyst.done", actions=len(result["actions"]), elapsed=round(time.time() - t0, 1))
+        log.info("analyst.done", provider=provider, model=model,
+                 actions=len(result["actions"]), elapsed=round(time.time() - t0, 1))
         return result
 
     except Exception as e:
-        log.exception("analyst.failed", error=str(e))
+        log.exception("analyst.failed", provider=provider, error=str(e))
         return {
             "actions": [],
-            "market_view": f"Analysis failed: {e}",
+            "market_view": f"Analysis failed ({provider}): {e}",
             "cash_advice": {"action": "NONE"},
             "error": str(e),
         }

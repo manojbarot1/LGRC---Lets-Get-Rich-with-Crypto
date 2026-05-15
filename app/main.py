@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import state
 from app.config import get_settings
 from app.database import get_session, get_session_factory, init_db
-from app.models import AnalysisLog, Portfolio, Trade
+from app.models import AISettings, AnalysisLog, Portfolio, Trade
 from app.portfolio import (
     deposit_cash, get_or_create_portfolio, get_positions,
     record_snapshot, withdraw_cash,
@@ -199,6 +199,86 @@ async def reset(session: AsyncSession = Depends(get_session)):
         portfolio.is_running = True
     await session.commit()
     return {"status": "reset"}
+
+
+# ─── AI Settings ──────────────────────────────────────────────────────────────
+
+class AISettingsRequest(BaseModel):
+    provider: str = "anthropic"
+    api_key: str = ""
+    base_url: str = ""
+    model_name: str = ""
+
+
+@app.get("/api/settings/ai")
+async def get_ai_settings(session: AsyncSession = Depends(get_session)):
+    ai = (await session.execute(select(AISettings).limit(1))).scalar_one_or_none()
+    settings = get_settings()
+    if not ai:
+        return {
+            "provider": "anthropic",
+            "api_key_set": bool(settings.anthropic_api_key),
+            "base_url": "",
+            "model_name": settings.claude_model,
+        }
+    return {
+        "provider": ai.provider,
+        "api_key_set": bool(ai.api_key),
+        "base_url": ai.base_url,
+        "model_name": ai.model_name,
+    }
+
+
+@app.post("/api/settings/ai")
+async def update_ai_settings(body: AISettingsRequest, session: AsyncSession = Depends(get_session)):
+    ai = (await session.execute(select(AISettings).limit(1))).scalar_one_or_none()
+    if not ai:
+        ai = AISettings()
+        session.add(ai)
+    ai.provider = body.provider
+    ai.base_url = body.base_url
+    ai.model_name = body.model_name
+    if body.api_key:  # blank = keep existing key
+        ai.api_key = body.api_key
+    await session.commit()
+    return {"status": "ok"}
+
+
+@app.post("/api/settings/ai/test")
+async def test_ai_connection(body: AISettingsRequest):
+    import anthropic as _anthropic
+    import httpx as _httpx
+
+    if body.provider == "anthropic":
+        try:
+            key = body.api_key or get_settings().anthropic_api_key
+            model = body.model_name or get_settings().claude_model
+            client = _anthropic.AsyncAnthropic(api_key=key)
+            await client.messages.create(
+                model=model, max_tokens=10,
+                messages=[{"role": "user", "content": "ping"}],
+            )
+            return {"status": "ok", "message": f"Connected · model: {model}"}
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
+    else:
+        try:
+            base = (body.base_url or "http://localhost:11434/v1").rstrip("/")
+            model = body.model_name or "llama3.2"
+            url = base + "/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            if body.api_key:
+                headers["Authorization"] = f"Bearer {body.api_key}"
+            async with _httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(url, headers=headers, json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 5,
+                })
+                resp.raise_for_status()
+            return {"status": "ok", "message": f"Connected · {base} · model: {model}"}
+        except Exception as e:
+            return JSONResponse({"error": str(e)}, status_code=400)
 
 
 @app.get("/health")

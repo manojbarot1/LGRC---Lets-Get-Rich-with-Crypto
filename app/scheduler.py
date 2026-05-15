@@ -9,6 +9,7 @@ import structlog
 from sqlalchemy import select, desc
 
 from app.analyst import analyze_and_decide
+from app.models import AISettings
 from app.config import get_settings
 from app.database import get_session_factory
 from app.models import AnalysisLog, Portfolio
@@ -110,7 +111,14 @@ async def run_claude_cycle() -> None:
             "take_profit_pct": settings.take_profit_pct,
         }
 
-        decision = await analyze_and_decide(portfolio.current_cash, pos_dicts, market, settings_dict)
+        ai_row = (await session.execute(select(AISettings).limit(1))).scalar_one_or_none()
+        ai_config = (
+            {"provider": ai_row.provider, "api_key": ai_row.api_key,
+             "base_url": ai_row.base_url, "model_name": ai_row.model_name}
+            if ai_row else None
+        )
+
+        decision = await analyze_and_decide(portfolio.current_cash, pos_dicts, market, settings_dict, ai_config)
 
         claude_trades = await apply_claude_actions(
             session, portfolio, decision.get("actions", []),

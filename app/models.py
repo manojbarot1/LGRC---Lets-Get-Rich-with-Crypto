@@ -72,6 +72,18 @@ class PortfolioSnapshot(Base):
     pnl_pct: Mapped[float] = mapped_column(Float)
 
 
+class AISettings(Base):
+    """Single row — runtime AI provider configuration (overrides .env)."""
+    __tablename__ = "ai_settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider: Mapped[str] = mapped_column(String(50), default="anthropic")   # anthropic | openai_compat
+    api_key: Mapped[str] = mapped_column(Text, default="")
+    base_url: Mapped[str] = mapped_column(Text, default="")                  # OpenAI-compat endpoint
+    model_name: Mapped[str] = mapped_column(String(100), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class AnalysisLog(Base):
     """One row per Claude decision cycle."""
     __tablename__ = "analysis_logs"
