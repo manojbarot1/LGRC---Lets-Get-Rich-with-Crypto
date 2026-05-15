@@ -87,6 +87,7 @@ async def broadcast_update(
                 (prices.get(p.symbol, p.current_price) - p.avg_cost) / p.avg_cost * 100, 2
             ),
             "value_usd": round(prices.get(p.symbol, p.current_price) * p.quantity, 2),
+            "opened_at": p.opened_at.isoformat() if p.opened_at else "",
         }
         for p in positions
     ]
@@ -102,6 +103,7 @@ async def broadcast_update(
             "pnl_pct": snap.pnl_pct,
             "realized_pnl": round(portfolio.realized_pnl, 2),
             "is_running": portfolio.is_running,
+            "started_at": portfolio.started_at.isoformat() if portfolio.started_at else None,
         },
         "positions": pos_list,
         "recent_trades": recent_trades,

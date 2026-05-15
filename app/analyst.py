@@ -15,7 +15,7 @@ log = structlog.get_logger()
 
 
 def _extract_json(text: str) -> dict:
-    """Pull the first JSON object out of a Claude response."""
+    """Pull the JSON object from a Claude response, trying from the last '{' first."""
     try:
         return json.loads(text.strip())
     except Exception:
@@ -26,10 +26,12 @@ def _extract_json(text: str) -> dict:
             return json.loads(m.group(1))
         except Exception:
             pass
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if m:
+    # Try parsing from each `{`, starting from the last — handles text before JSON
+    for match in reversed(list(re.finditer(r'\{', text))):
         try:
-            return json.loads(m.group(0))
+            candidate = json.loads(text[match.start():])
+            if isinstance(candidate, dict) and "actions" in candidate:
+                return candidate
         except Exception:
             pass
     return {"actions": [], "market_view": text[:500]}
@@ -137,21 +139,33 @@ Trending (most searched): {trending_text}
 cash_advice.action must be "ADD", "WITHDRAW", or "NONE".
 Only include HOLD if you want to record it. Only include cash_advice if conviction is strong."""
 
+    _SYSTEM = (
+        "You are a JSON-only API endpoint for a crypto trading simulator. "
+        "Your entire response must be a single valid JSON object with no text, "
+        "explanation, or markdown before or after it."
+    )
+
     t0 = time.time()
     try:
         try:
             response = await client.beta.messages.create(
                 model=settings.claude_model,
-                max_tokens=2048,
+                max_tokens=4096,
+                system=_SYSTEM,
                 betas=["web-search-2025-03-05"],
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
                 messages=[{"role": "user", "content": prompt}],
             )
         except Exception:
+            no_search_note = (
+                "\n\nIMPORTANT: Web search is unavailable. "
+                "Analyze the live market data provided above and return ONLY the JSON object."
+            )
             response = await client.messages.create(
                 model=settings.claude_model,
-                max_tokens=2048,
-                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                system=_SYSTEM,
+                messages=[{"role": "user", "content": prompt + no_search_note}],
             )
 
         full_text = "\n".join(

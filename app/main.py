@@ -84,9 +84,11 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_sessio
                     (prices.get(p.symbol, p.current_price) - p.avg_cost) / p.avg_cost * 100, 2
                 ),
                 "value_usd": round(prices.get(p.symbol, p.current_price) * p.quantity, 2),
+                "opened_at": p.opened_at.isoformat() if p.opened_at else "",
             }
             for p in positions
         ],
+        "started_at": portfolio.started_at.isoformat() if portfolio.started_at else "",
         "total_value": round(total, 2),
         "invested": round(invested, 2),
         "pnl": round(pnl, 2),

@@ -295,6 +295,7 @@
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>
         LIVE
       </span>
+      <span class="text-xs text-slate-400">Up: <span id="uptime" class="text-cyan-300 font-mono font-bold">0m 0s</span></span>
       <span class="text-xs text-slate-400">Price: <span id="next-price" class="text-cyan-300 font-mono font-bold">60s</span></span>
       <span class="text-xs text-slate-400">AI: <span id="next-ai" class="text-cyan-300 font-mono font-bold">4m30s</span></span>
       <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸ Pause</button>
@@ -403,6 +404,7 @@
             <th class="text-right pb-3">Now</th>
             <th class="text-right pb-3">P&L</th>
             <th class="text-right pb-3">Value</th>
+            <th class="text-right pb-3">Opened</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-700/50">
@@ -416,6 +418,7 @@
               {{ '{:+.2f}'.format(p.pnl_usd) }}<br><span class="text-xs opacity-70">{{ '{:+.1f}'.format(p.pnl_pct) }}%</span>
             </td>
             <td class="py-3 text-right font-mono text-xs font-semibold">${{ '%.2f'|format(p.value_usd) }}</td>
+            <td class="py-3 text-right font-mono text-xs text-slate-500" data-ts="{{ p.opened_at }}"></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -440,7 +443,7 @@
         <span class="ml-auto font-mono {% if t.realized_pnl and t.realized_pnl > 0 %}text-green-400{% elif t.realized_pnl and t.realized_pnl < 0 %}text-red-400{% else %}text-slate-400{% endif %}">
           {% if t.realized_pnl %}{{ '{:+.2f}'.format(t.realized_pnl) }}{% else %}${{ '%.2f'|format(t.amount_usd) }}{% endif %}
         </span>
-        <span class="text-slate-600 text-xs">{{ t.executed_at.strftime('%H:%M') }}</span>
+        <span class="text-slate-500 text-xs font-mono" data-ts="{{ t.executed_at.isoformat() }}"></span>
       </div>
       {% else %}
       <div class="text-center py-8 text-slate-600 text-sm">No trades yet</div>
@@ -463,6 +466,44 @@
 </div><!-- /container -->
 
 <script>
+// ── Date/Time Helpers ──
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const month = d.toLocaleDateString('en-US', {month: 'short'});
+  const day = d.getDate();
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${month} ${day} · ${h}:${m}`;
+}
+
+// ── Uptime Counter ──
+let _startedAt = null;
+{% if started_at %}
+_startedAt = new Date("{{ started_at }}");
+{% endif %}
+
+function updateUptime() {
+  if (!_startedAt) return;
+  const elapsed = Math.floor((Date.now() - _startedAt.getTime()) / 1000);
+  const d = Math.floor(elapsed / 86400);
+  const h = Math.floor((elapsed % 86400) / 3600);
+  const mn = Math.floor((elapsed % 3600) / 60);
+  const s = elapsed % 60;
+  let up = '';
+  if (d > 0) up += d + 'd ';
+  if (h > 0 || d > 0) up += h + 'h ';
+  up += mn + 'm ' + s + 's';
+  document.getElementById('uptime').textContent = up;
+}
+setInterval(updateUptime, 1000);
+updateUptime();
+
+// ── Render timestamps on initial server-rendered elements ──
+document.querySelectorAll('[data-ts]').forEach(el => {
+  el.textContent = fmtDateTime(el.dataset.ts);
+});
+
 // ── Modal Functions ──
 function showPauseModal() {
   if (document.getElementById('pause-btn').disabled) return;
@@ -681,6 +722,7 @@ ws.onmessage = (event) => {
   }
 
   const p = d.portfolio;
+  if (p.started_at && !_startedAt) _startedAt = new Date(p.started_at);
   updateButtonStates(p.is_running);
 
   document.getElementById('metric-value').textContent = '$' + p.total_value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -704,17 +746,17 @@ ws.onmessage = (event) => {
     document.getElementById('pos-count').textContent = '(' + d.positions.length + ')';
     const rows = d.positions.map(pos => {
       const c = pos.pnl_usd >= 0 ? 'glow-green' : 'glow-red';
-      return `<tr class="hover:bg-slate-700/20 transition"><td class="py-3 font-mono font-bold text-cyan-300">${pos.symbol}</td><td class="py-3 text-right font-mono text-xs">${pos.quantity.toPrecision(4)}</td><td class="py-3 text-right font-mono text-xs text-slate-400">$${pos.avg_cost.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs">$${pos.current_price.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs ${c}">${(pos.pnl_usd>=0?'+':'')+pos.pnl_usd.toFixed(2)}<br><span class="text-xs opacity-70">${(pos.pnl_pct>=0?'+':'')+pos.pnl_pct.toFixed(1)}%</span></td><td class="py-3 text-right font-mono text-xs font-semibold">$${pos.value_usd.toFixed(2)}</td></tr>`;
+      const opened = fmtDateTime(pos.opened_at);
+      return `<tr class="hover:bg-slate-700/20 transition"><td class="py-3 font-mono font-bold text-cyan-300">${pos.symbol}</td><td class="py-3 text-right font-mono text-xs">${pos.quantity.toPrecision(4)}</td><td class="py-3 text-right font-mono text-xs text-slate-400">$${pos.avg_cost.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs">$${pos.current_price.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs ${c}">${(pos.pnl_usd>=0?'+':'')+pos.pnl_usd.toFixed(2)}<br><span class="text-xs opacity-70">${(pos.pnl_pct>=0?'+':'')+pos.pnl_pct.toFixed(1)}%</span></td><td class="py-3 text-right font-mono text-xs font-semibold">$${pos.value_usd.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs text-slate-500">${opened}</td></tr>`;
     }).join('');
-    document.getElementById('positions-table').innerHTML = `<table class="w-full text-sm"><thead class="text-xs font-semibold text-slate-400 uppercase"><tr><th class="text-left pb-3">Symbol</th><th class="text-right pb-3">Qty</th><th class="text-right pb-3">Cost</th><th class="text-right pb-3">Now</th><th class="text-right pb-3">P&L</th><th class="text-right pb-3">Value</th></tr></thead><tbody class="divide-y divide-slate-700/50">${rows}</tbody></table>`;
+    document.getElementById('positions-table').innerHTML = `<table class="w-full text-sm"><thead class="text-xs font-semibold text-slate-400 uppercase"><tr><th class="text-left pb-3">Symbol</th><th class="text-right pb-3">Qty</th><th class="text-right pb-3">Cost</th><th class="text-right pb-3">Now</th><th class="text-right pb-3">P&L</th><th class="text-right pb-3">Value</th><th class="text-right pb-3">Opened</th></tr></thead><tbody class="divide-y divide-slate-700/50">${rows}</tbody></table>`;
   }
 
   // Trades
   if (d.recent_trades.length > 0) {
     const feed = d.recent_trades.map(t => {
       const pnlHtml = t.realized_pnl ? `<span class="ml-auto font-mono ${t.realized_pnl>0?'text-green-400':t.realized_pnl<0?'text-red-400':'text-slate-400'}">${(t.realized_pnl>=0?'+':'')+t.realized_pnl.toFixed(2)}</span>` : `<span class="ml-auto font-mono text-slate-400">$${t.amount_usd.toFixed(2)}</span>`;
-      const time = new Date(t.executed_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
-      return `<div class="flex items-center gap-3 text-xs rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-700/40 transition"><span class="tag-${t.side.toLowerCase()} px-2 py-1 rounded text-xs font-bold w-12 text-center">${t.side}</span><span class="font-mono font-bold w-14 text-cyan-300">${t.symbol}</span><span class="text-slate-400 font-mono">${t.quantity.toPrecision(4)}×$${t.price.toFixed(2)}</span>${pnlHtml}<span class="text-slate-600 text-xs">${time}</span></div>`;
+      return `<div class="flex items-center gap-3 text-xs rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-700/40 transition"><span class="tag-${t.side.toLowerCase()} px-2 py-1 rounded text-xs font-bold w-12 text-center">${t.side}</span><span class="font-mono font-bold w-14 text-cyan-300">${t.symbol}</span><span class="text-slate-400 font-mono">${t.quantity.toPrecision(4)}×$${t.price.toFixed(2)}</span>${pnlHtml}<span class="text-slate-500 font-mono text-xs">${fmtDateTime(t.executed_at)}</span></div>`;
     }).join('');
     document.getElementById('trade-feed').innerHTML = feed;
   }
