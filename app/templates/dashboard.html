@@ -368,9 +368,13 @@
       <span class="text-xs text-slate-400">Up: <span id="uptime" class="text-cyan-300 font-mono font-bold">0m 0s</span></span>
       <span class="text-xs text-slate-400">Price: <span id="next-price" class="text-cyan-300 font-mono font-bold">60s</span></span>
       <span class="text-xs text-slate-400">AI: <span id="next-ai" class="text-cyan-300 font-mono font-bold">4m30s</span></span>
+      <span class="text-xs text-slate-400 font-mono">{{ user.username }}</span>
       <button onclick="openSettingsModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700/50 to-slate-600/50 text-slate-300 hover:from-slate-600/60 hover:to-slate-500/60 border border-slate-500/30 transition font-semibold btn">⚙ AI</button>
       <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸ Pause</button>
       <button id="resume-btn" onclick="showResumeModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600/30 to-green-600/30 text-emerald-300 hover:from-emerald-600/50 hover:to-green-600/50 border border-emerald-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn" disabled>▶ Resume</button>
+      <form method="POST" action="/logout" style="display:inline;">
+        <button type="submit" class="text-xs px-4 py-2 rounded-lg bg-slate-800/50 text-slate-500 hover:text-slate-300 border border-slate-700/40 transition font-semibold btn">Sign out</button>
+      </form>
     </div>
   </div>
 </nav>
@@ -710,6 +714,7 @@ function updateButtonStates(isRunning) {
 // ── Chart Setup ──
 const ctx = document.getElementById('perf-chart').getContext('2d');
 const initialCapital = {{ portfolio.total_deposited }};
+let _chartLoaded = false;
 
 const perfChart = new Chart(ctx, {
   type: 'line',
@@ -767,6 +772,8 @@ const perfChart = new Chart(ctx, {
       x: {
         type: 'time',
         time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
+        suggestedMin: new Date(Date.now() - 3600000),
+        suggestedMax: new Date(Date.now() + 60000),
         grid: { color: 'rgba(100, 200, 255, 0.1)', drawBorder: false },
         ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 12 } },
       },
@@ -855,13 +862,19 @@ ws.onmessage = (event) => {
     document.getElementById('cash-advice-banner').style.display = 'flex';
   }
 
-  // Chart
-  const now = new Date();
-  perfChart.data.datasets[0].data.push({ x: now, y: p.total_value });
-  perfChart.data.datasets[1].data.push({ x: now, y: initialCapital });
-  if (perfChart.data.datasets[0].data.length > 200) {
-    perfChart.data.datasets[0].data.shift();
-    perfChart.data.datasets[1].data.shift();
+  // Chart — seed from DB history on first message, then append live points
+  if (!_chartLoaded && d.history && d.history.length > 0) {
+    perfChart.data.datasets[0].data = d.history.map(h => ({ x: new Date(h.t), y: h.v }));
+    perfChart.data.datasets[1].data = d.history.map(h => ({ x: new Date(h.t), y: initialCapital }));
+    _chartLoaded = true;
+  } else {
+    const now = new Date();
+    perfChart.data.datasets[0].data.push({ x: now, y: p.total_value });
+    perfChart.data.datasets[1].data.push({ x: now, y: initialCapital });
+    if (perfChart.data.datasets[0].data.length > 200) {
+      perfChart.data.datasets[0].data.shift();
+      perfChart.data.datasets[1].data.shift();
+    }
   }
   perfChart.data.datasets[0].borderColor = p.total_value >= initialCapital ? '#4ade80' : '#ff6b6b';
   perfChart.data.datasets[0].backgroundColor = p.total_value >= initialCapital ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 107, 107, 0.1)';

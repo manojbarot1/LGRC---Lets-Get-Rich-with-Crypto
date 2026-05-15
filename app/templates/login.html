@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LGRC — Sign In</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    min-height: 100vh;
+    font-family: system-ui, sans-serif;
+  }
+  input {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(100, 200, 255, 0.2) !important;
+    color: #e0e6ff !important;
+    border-radius: 10px !important;
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  input::placeholder { color: rgba(226, 232, 240, 0.4) !important; }
+  input:focus {
+    outline: none !important;
+    border-color: rgba(100, 200, 255, 0.6) !important;
+    box-shadow: 0 0 20px rgba(100, 200, 255, 0.15) !important;
+    background: rgba(30, 41, 59, 0.9) !important;
+  }
+  .glass {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 20px;
+  }
+  .tab-active-login  { background: rgba(6, 182, 212, 0.2); color: #67e8f9; }
+  .tab-active-register { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; }
+  .tab-inactive { color: #64748b; }
+  .tab-inactive:hover { color: #94a3b8; }
+</style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+<div class="w-full max-w-sm">
+
+  <div class="text-center mb-8">
+    <div style="font-size:52px; margin-bottom:12px;">💎</div>
+    <h1 style="font-size:24px; font-weight:800; background:linear-gradient(to right,#67e8f9,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">LGRC</h1>
+    <p style="color:#64748b; font-size:13px; margin-top:4px;">Let's Get Rich with Crypto</p>
+  </div>
+
+  <div class="glass p-8">
+
+    <!-- Tab toggle -->
+    <div style="display:flex; gap:4px; background:rgba(30,41,59,0.5); border-radius:10px; padding:4px; margin-bottom:24px;">
+      <button id="tab-login" onclick="showTab('login')"
+        class="tab-active-login"
+        style="flex:1; padding:8px; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; transition:all 0.2s;">
+        Sign In
+      </button>
+      <button id="tab-register" onclick="showTab('register')"
+        class="tab-inactive"
+        style="flex:1; padding:8px; font-size:13px; font-weight:600; border-radius:8px; border:none; cursor:pointer; transition:all 0.2s; background:transparent;">
+        Register
+      </button>
+    </div>
+
+    {% if error %}
+    <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px 16px; color:#fca5a5; font-size:13px; margin-bottom:16px;">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Login form -->
+    <form id="form-login" method="POST" action="/login" style="display:flex; flex-direction:column; gap:12px;">
+      <input type="hidden" name="mode" value="login">
+      <input type="text" name="username" placeholder="Username" autocomplete="username" required>
+      <input type="password" name="password" placeholder="Password" autocomplete="current-password" required>
+      <button type="submit"
+        style="background:linear-gradient(135deg,#0891b2,#6366f1); color:white; font-weight:700; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px; margin-top:4px; transition:opacity 0.2s;"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        Sign In →
+      </button>
+    </form>
+
+    <!-- Register form -->
+    <form id="form-register" method="POST" action="/login" style="display:none; flex-direction:column; gap:12px;">
+      <input type="hidden" name="mode" value="register">
+      <input type="text" name="username" placeholder="Choose a username (3+ chars)" autocomplete="username" required>
+      <input type="password" name="password" placeholder="Password (6+ chars)" autocomplete="new-password" required>
+      <input type="password" name="password2" placeholder="Confirm password" autocomplete="new-password" required>
+      <button type="submit"
+        style="background:linear-gradient(135deg,#059669,#10b981); color:white; font-weight:700; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px; margin-top:4px; transition:opacity 0.2s;"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        Create Account →
+      </button>
+    </form>
+
+  </div>
+
+  <p style="text-align:center; font-size:11px; color:#334155; margin-top:20px;">
+    Local simulator · All data stays on your machine
+  </p>
+</div>
+
+<script>
+function showTab(t) {
+  const isLogin = t === 'login';
+  document.getElementById('form-login').style.display = isLogin ? 'flex' : 'none';
+  document.getElementById('form-register').style.display = isLogin ? 'none' : 'flex';
+
+  const tl = document.getElementById('tab-login');
+  const tr = document.getElementById('tab-register');
+  tl.className = isLogin ? 'tab-active-login' : 'tab-inactive';
+  tr.className = isLogin ? 'tab-inactive' : 'tab-active-register';
+  tl.style.background = isLogin ? '' : 'transparent';
+  tr.style.background = isLogin ? 'transparent' : '';
+}
+
+{% if mode == 'register' %}showTab('register');{% else %}showTab('login');{% endif %}
+</script>
+</body>
+</html>

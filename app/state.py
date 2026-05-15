@@ -1,4 +1,4 @@
-"""Shared in-process state: WebSocket connections + live snapshot."""
+"""Shared in-process state: WebSocket connections (per portfolio) + live snapshot."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -11,22 +11,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 if TYPE_CHECKING:
     from app.models import Portfolio, Position, PortfolioSnapshot
 
-_connections: list[WebSocket] = []
-next_cycle_in: int = 0       # seconds until next fast price cycle
-next_ai_in: int = 0          # seconds until next Claude analysis
-last_analysis: str = "Waiting for first analysis cycle…"
-last_actions: list[dict] = []
-last_cash_advice: dict = {"action": "NONE"}
+# portfolio_id -> list of active WebSocket connections
+_connections: dict[int, list[WebSocket]] = {}
+_ws_to_portfolio: dict[int, int] = {}  # id(ws) -> portfolio_id
+
+next_cycle_in: int = 0
+next_ai_in: int = 0
+
+# per-portfolio state (portfolio_id -> value)
+last_analysis: dict[int, str] = {}
+last_actions: dict[int, list] = {}
+last_cash_advice: dict[int, dict] = {}
 
 
-async def ws_connect(ws: WebSocket) -> None:
+async def ws_connect(ws: WebSocket, portfolio_id: int) -> None:
     await ws.accept()
-    _connections.append(ws)
+    _connections.setdefault(portfolio_id, []).append(ws)
+    _ws_to_portfolio[id(ws)] = portfolio_id
 
 
 def ws_disconnect(ws: WebSocket) -> None:
-    if ws in _connections:
-        _connections.remove(ws)
+    pid = _ws_to_portfolio.pop(id(ws), None)
+    if pid is not None and pid in _connections:
+        try:
+            _connections[pid].remove(ws)
+        except ValueError:
+            pass
 
 
 async def _safe_send(ws: WebSocket, data: dict) -> bool:
@@ -45,14 +55,19 @@ async def broadcast_update(
     prices: dict[str, float],
     snap: "PortfolioSnapshot",
 ) -> None:
-    if not _connections:
+    connections = list(_connections.get(portfolio.id, []))
+    if not connections:
         return
 
-    from app.models import Trade, PortfolioSnapshot
+    from app.models import Trade, PortfolioSnapshot as PS
 
-    trades_q = await session.execute(
-        select(Trade).order_by(desc(Trade.executed_at)).limit(20)
-    )
+    trades = (await session.execute(
+        select(Trade)
+        .where(Trade.portfolio_id == portfolio.id)
+        .order_by(desc(Trade.executed_at))
+        .limit(20)
+    )).scalars().all()
+
     recent_trades = [
         {
             "id": t.id,
@@ -65,15 +80,19 @@ async def broadcast_update(
             "reason": t.reason,
             "executed_at": t.executed_at.isoformat() if t.executed_at else None,
         }
-        for t in trades_q.scalars().all()
+        for t in trades
     ]
 
-    hist_q = await session.execute(
-        select(PortfolioSnapshot).order_by(desc(PortfolioSnapshot.recorded_at)).limit(200)
-    )
+    hist = (await session.execute(
+        select(PS)
+        .where(PS.portfolio_id == portfolio.id)
+        .order_by(desc(PS.recorded_at))
+        .limit(200)
+    )).scalars().all()
+
     history = [
         {"t": s.recorded_at.isoformat(), "v": s.total_value, "pnl_pct": s.pnl_pct}
-        for s in reversed(hist_q.scalars().all())
+        for s in reversed(hist)
     ]
 
     pos_list = [
@@ -108,18 +127,13 @@ async def broadcast_update(
         "positions": pos_list,
         "recent_trades": recent_trades,
         "history": history,
-        "analysis": last_analysis,
-        "last_actions": last_actions,
-        "cash_advice": last_cash_advice,
+        "analysis": last_analysis.get(portfolio.id, "Waiting for first analysis cycle…"),
+        "last_actions": last_actions.get(portfolio.id, []),
+        "cash_advice": last_cash_advice.get(portfolio.id, {"action": "NONE"}),
         "next_cycle_in": next_cycle_in,
         "next_ai_in": next_ai_in,
         "ts": datetime.now(timezone.utc).isoformat(),
     }
 
-    dead = []
-    for ws in list(_connections):
-        ok = await _safe_send(ws, payload)
-        if not ok:
-            dead.append(ws)
-    for ws in dead:
-        ws_disconnect(ws)
+    for ws in connections:
+        await _safe_send(ws, payload)
