@@ -25,6 +25,16 @@ SYMBOL_TO_CG = {
     "TON": "the-open-network", "FIL": "filecoin",
     "SEI": "sei-network", "TIA": "celestia", "JUP": "jupiter-exchange-solana",
     "WIF": "dogwifcoin", "BONK": "bonk",
+    # Extended — commonly suggested by AI models
+    "RUNE": "thorchain", "HBAR": "hedera-hashgraph", "VET": "vechain",
+    "ALGO": "algorand", "ICP": "internet-computer", "SAND": "the-sandbox",
+    "MANA": "decentraland", "AXS": "axie-infinity", "GALA": "gala",
+    "FTM": "fantom", "CRV": "curve-dao-token", "AAVE": "aave",
+    "MKR": "maker", "SNX": "havven", "LDO": "lido-dao",
+    "RNDR": "render-token", "FET": "fetch-ai", "AGIX": "singularitynet",
+    "STX": "blockstack", "ROSE": "oasis-network", "ONE": "harmony",
+    "ZIL": "zilliqa", "XLM": "stellar", "EOS": "eos",
+    "CAKE": "pancakeswap-token", "GMT": "stepn", "CFX": "conflux-token",
 }
 
 CG_TO_SYMBOL = {v: k for k, v in SYMBOL_TO_CG.items()}
