@@ -8,178 +8,436 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
-  body { background: #0a0e27; color: #e2e8f0; font-family: 'Inter', system-ui, sans-serif; }
-  .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; }
-  .pulse-green { animation: pulse-g 2s infinite; }
-  @keyframes pulse-g { 0%,100% { opacity:1; } 50% { opacity:.4; } }
-  .badge-live { background: rgba(16,185,129,.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,.3); }
-  .tag-buy  { background: rgba(16,185,129,.15); color: #6ee7b7; }
-  .tag-sell { background: rgba(239,68,68,.15); color: #fca5a5; }
-  .trade-row:hover { background: rgba(255,255,255,.02); }
-  ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #334155; border-radius:4px; }
-  .metric-card { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
-  .cash-advice { background: linear-gradient(135deg, rgba(217,119,6,.1) 0%, rgba(217,119,6,.05) 100%); border: 1px solid rgba(217,119,6,.2); }
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    color: #e0e6ff;
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+
+  .glass-strong {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+  }
+
+  /* Cards */
+  .card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%);
+    border: 1px solid rgba(100, 200, 255, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: rgba(100, 200, 255, 0.4);
+    box-shadow: 0 12px 48px rgba(100, 200, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .metric-card {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 41, 59, 0.7) 100%);
+    border: 1px solid rgba(100, 200, 255, 0.3);
+  }
+
+  .metric-card:hover {
+    border-color: rgba(100, 200, 255, 0.6);
+    box-shadow: 0 0 20px rgba(100, 200, 255, 0.2);
+  }
+
+  /* Neon effects */
+  .neon-glow {
+    text-shadow: 0 0 10px rgba(100, 200, 255, 0.8), 0 0 20px rgba(100, 200, 255, 0.4);
+  }
+
+  .glow-green {
+    text-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
+    color: #4ade80;
+  }
+
+  .glow-red {
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+    color: #ff6b6b;
+  }
+
+  /* Animations */
+  @keyframes pulse-g {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(34, 197, 94, 0.8); }
+    50% { opacity: 0.4; box-shadow: 0 0 5px rgba(34, 197, 94, 0.4); }
+  }
+
+  @keyframes pulse-amber {
+    0%, 100% { opacity: 1; box-shadow: 0 0 10px rgba(217, 119, 6, 0.8); }
+    50% { opacity: 0.4; box-shadow: 0 0 5px rgba(217, 119, 6, 0.4); }
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .animate-pulse-g { animation: pulse-g 2s infinite; }
+  .animate-pulse-amber { animation: pulse-amber 2s infinite; }
+  .animate-slide { animation: slideDown 0.3s ease; }
+
+  /* Status badges */
+  .badge-live {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+  }
+
+  .badge-paused {
+    background: rgba(217, 119, 6, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(217, 119, 6, 0.5);
+    box-shadow: 0 0 15px rgba(217, 119, 6, 0.2);
+  }
+
+  /* Trade tags */
+  .tag-buy {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.5);
+  }
+
+  .tag-sell {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ff6b6b;
+    border: 1px solid rgba(239, 68, 68, 0.5);
+  }
+
+  .trade-row:hover {
+    background: rgba(100, 200, 255, 0.05);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #64b5f6, #42a5f5); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #42a5f5, #2196f3); }
+
+  /* Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 50;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal.show {
+    display: flex;
+    animation: slideDown 0.3s ease;
+  }
+
+  .modal-content {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%);
+    border: 2px solid rgba(100, 200, 255, 0.4);
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 500px;
+    box-shadow: 0 0 60px rgba(100, 200, 255, 0.3), 0 20px 60px rgba(0, 0, 0, 0.5);
+    text-align: center;
+  }
+
+  .modal-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+  }
+
+  .modal-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #64b5f6, #42a5f5);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .modal-text {
+    color: #cbd5e1;
+    margin-bottom: 30px;
+    line-height: 1.6;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .btn-modal {
+    flex: 1;
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-size: 14px;
+  }
+
+  .btn-confirm {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    color: white;
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+  }
+
+  .btn-confirm:hover {
+    box-shadow: 0 0 30px rgba(52, 211, 153, 0.5);
+    transform: translateY(-2px);
+  }
+
+  .btn-cancel {
+    background: rgba(148, 163, 184, 0.1);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+  }
+
+  .btn-cancel:hover {
+    background: rgba(148, 163, 184, 0.2);
+  }
+
+  /* Input styling */
+  input {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border: 1px solid rgba(100, 200, 255, 0.2) !important;
+    color: #e0e6ff !important;
+    border-radius: 10px !important;
+    transition: all 0.3s ease !important;
+  }
+
+  input::placeholder {
+    color: rgba(226, 232, 240, 0.4) !important;
+  }
+
+  input:focus {
+    outline: none !important;
+    border-color: rgba(100, 200, 255, 0.6) !important;
+    box-shadow: 0 0 20px rgba(100, 200, 255, 0.2) !important;
+    background: rgba(30, 41, 59, 0.8) !important;
+  }
+
+  /* Buttons */
+  .btn {
+    transition: all 0.3s ease;
+    border-radius: 10px;
+  }
 </style>
 </head>
 <body class="min-h-screen">
 
+<!-- ── Modal Popups ── -->
+<div id="pauseModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-icon">⏸️</div>
+    <div class="modal-title">Pause Trading?</div>
+    <p class="modal-text">The trading loop will stop executing trades. Your positions will be held, but Claude won't make new decisions.</p>
+    <div class="modal-buttons">
+      <button class="btn-modal btn-cancel" onclick="closePauseModal()">Cancel</button>
+      <button class="btn-modal btn-confirm" onclick="confirmPause()">Pause</button>
+    </div>
+  </div>
+</div>
+
+<div id="resumeModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-icon">▶️</div>
+    <div class="modal-title">Resume Trading?</div>
+    <p class="modal-text">Claude will start analyzing the market and executing trades again. All risk rules will be enforced.</p>
+    <div class="modal-buttons">
+      <button class="btn-modal btn-cancel" onclick="closeResumeModal()">Cancel</button>
+      <button class="btn-modal btn-confirm" onclick="confirmResume()">Resume</button>
+    </div>
+  </div>
+</div>
+
+<div id="alertModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-icon" id="alertIcon">✅</div>
+    <div class="modal-title" id="alertTitle">Success</div>
+    <p class="modal-text" id="alertText">Operation completed</p>
+    <div class="modal-buttons">
+      <button class="btn-modal btn-confirm" style="flex: auto;" onclick="closeAlert()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Header/Nav ── -->
-<nav class="border-b border-slate-800 bg-slate-900/40 backdrop-blur sticky top-0 z-10">
+<nav class="glass sticky top-0 z-20 border-b border-slate-700/50">
   <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <div class="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">💎</div>
+      <div class="text-3xl font-bold neon-glow">💎</div>
       <div>
-        <h1 class="text-lg font-bold leading-none">LGRC</h1>
-        <p class="text-xs text-slate-400">Let's Get Rich with Crypto</p>
+        <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">LGRC</h1>
+        <p class="text-xs text-slate-400">Autonomous Crypto Trading AI</p>
       </div>
     </div>
-    <div class="flex items-center gap-4">
-      <span id="status-badge" class="badge-live text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 font-medium">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>
+    <div class="flex items-center gap-5">
+      <span id="status-badge" class="badge-live text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>
         LIVE
       </span>
-      <span class="text-xs text-slate-500">Price: <span id="next-price" class="text-slate-300 font-mono font-bold">60s</span></span>
-      <span class="text-xs text-slate-500">AI: <span id="next-ai" class="text-slate-300 font-mono font-bold">4m30s</span></span>
-      <button id="pause-btn" onclick="pauseTrading()" class="text-xs px-3 py-1.5 rounded-lg bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-600/20 transition enabled:opacity-100 disabled:opacity-40 disabled:cursor-not-allowed">⏸ Pause</button>
-      <button id="resume-btn" onclick="resumeTrading()" class="text-xs px-3 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/20 transition enabled:opacity-100 disabled:opacity-40 disabled:cursor-not-allowed" disabled>▶ Resume</button>
+      <span class="text-xs text-slate-400">Price: <span id="next-price" class="text-cyan-300 font-mono font-bold">60s</span></span>
+      <span class="text-xs text-slate-400">AI: <span id="next-ai" class="text-cyan-300 font-mono font-bold">4m30s</span></span>
+      <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸ Pause</button>
+      <button id="resume-btn" onclick="showResumeModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600/30 to-green-600/30 text-emerald-300 hover:from-emerald-600/50 hover:to-green-600/50 border border-emerald-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn" disabled>▶ Resume</button>
     </div>
   </div>
 </nav>
 
-<div class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+<div class="max-w-7xl mx-auto px-6 py-8 space-y-8">
 
-<!-- ── Cash Status Metrics ── -->
-<div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-  <div class="metric-card card p-4">
-    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total Deposited</div>
-    <div class="text-2xl font-bold font-mono" id="metric-deposited">${{ '{:,.2f}'.format(portfolio.total_deposited) }}</div>
-    <div class="text-xs text-slate-600 mt-1">Your capital</div>
+<!-- ── Status Metrics Grid ── -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+  <div class="card metric-card p-5 group">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total Deposited</div>
+    <div class="text-3xl font-bold font-mono neon-glow mb-1" id="metric-deposited">${{ '{:,.2f}'.format(portfolio.total_deposited) }}</div>
+    <div class="text-xs text-slate-500">Your capital</div>
   </div>
-  <div class="metric-card card p-4">
-    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Invested Now</div>
-    <div class="text-2xl font-bold font-mono" id="metric-invested">${{ '{:,.2f}'.format(invested) }}</div>
-    <div class="text-xs text-slate-600 mt-1">{{ positions|length }} positions</div>
+
+  <div class="card metric-card p-5 group">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Invested Now</div>
+    <div class="text-3xl font-bold font-mono neon-glow mb-1" id="metric-invested">${{ '{:,.2f}'.format(invested) }}</div>
+    <div class="text-xs text-slate-500">{{ positions|length }} positions</div>
   </div>
-  <div class="metric-card card p-4">
-    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Available Cash</div>
-    <div class="text-2xl font-bold font-mono" id="metric-cash">${{ '{:,.2f}'.format(portfolio.current_cash) }}</div>
-    <div class="text-xs text-slate-600 mt-1">Ready to trade</div>
+
+  <div class="card metric-card p-5 group">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Available Cash</div>
+    <div class="text-3xl font-bold font-mono neon-glow mb-1" id="metric-cash">${{ '{:,.2f}'.format(portfolio.current_cash) }}</div>
+    <div class="text-xs text-slate-500">Ready to trade</div>
   </div>
-  <div class="metric-card card p-4">
-    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Portfolio Value</div>
-    <div class="text-2xl font-bold font-mono" id="metric-value">${{ '{:,.2f}'.format(total_value) }}</div>
-    <div class="text-xs text-slate-600 mt-1">Total holdings</div>
+
+  <div class="card metric-card p-5 group">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Portfolio Value</div>
+    <div class="text-3xl font-bold font-mono neon-glow mb-1" id="metric-value">${{ '{:,.2f}'.format(total_value) }}</div>
+    <div class="text-xs text-slate-500">Total holdings</div>
   </div>
-  <div class="metric-card card p-4">
-    <div class="text-xs text-slate-500 uppercase tracking-wider mb-1">Total P&L</div>
-    <div id="metric-pnl" class="text-2xl font-bold font-mono {{ 'text-emerald-400' if pnl >= 0 else 'text-red-400' }}">
-      {{ '{:+,.2f}'.format(pnl) }}
+
+  <div class="card metric-card p-5 group">
+    <div class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">Total P&L</div>
+    <div id="metric-pnl" class="text-3xl font-bold font-mono {{ 'glow-green' if pnl >= 0 else 'glow-red' }} mb-1">{{ '{:+,.2f}'.format(pnl) }}</div>
+    <div id="metric-pnl-pct" class="text-xs {{ 'text-green-400' if pnl_pct >= 0 else 'text-red-400' }}">{{ '{:+.2f}'.format(pnl_pct) }}%</div>
+  </div>
+</div>
+
+<!-- ── Deposit/Withdraw Section ── -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div class="card p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <span class="text-2xl">💰</span>
+      <h3 class="text-lg font-bold text-cyan-300">Add Capital</h3>
     </div>
-    <div id="metric-pnl-pct" class="text-xs mt-1 {{ 'text-emerald-400' if pnl_pct >= 0 else 'text-red-400' }}">
-      {{ '{:+.2f}'.format(pnl_pct) }}%
+    <div class="space-y-3">
+      <input type="number" id="deposit-amount" placeholder="Amount (USD)" min="1" step="0.01" class="w-full px-4 py-3 text-sm">
+      <input type="text" id="deposit-note" placeholder="Note (optional)" class="w-full px-4 py-3 text-sm">
+      <button onclick="depositCash()" class="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold py-3 rounded-lg transition transform hover:scale-105 btn">Deposit Now</button>
+    </div>
+  </div>
+
+  <div class="card p-6">
+    <div class="flex items-center gap-3 mb-5">
+      <span class="text-2xl">📤</span>
+      <h3 class="text-lg font-bold text-orange-300">Withdraw</h3>
+    </div>
+    <div class="space-y-3">
+      <input type="number" id="withdraw-amount" placeholder="Amount (USD)" min="1" step="0.01" class="w-full px-4 py-3 text-sm">
+      <input type="text" id="withdraw-note" placeholder="Note (optional)" class="w-full px-4 py-3 text-sm">
+      <button onclick="withdrawCash()" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-semibold py-3 rounded-lg transition transform hover:scale-105 btn">Withdraw</button>
     </div>
   </div>
 </div>
 
-<!-- ── Deposit/Withdraw ── -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div class="card p-5">
-    <div class="flex items-center gap-2 mb-3">
-      <span class="text-lg">💰</span>
-      <h3 class="font-bold">Add Cash</h3>
-    </div>
-    <div class="space-y-2">
-      <input type="number" id="deposit-amount" placeholder="Amount USD" min="1" step="0.01" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-600">
-      <input type="text" id="deposit-note" placeholder="Note (optional)" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-600">
-      <button onclick="depositCash()" class="w-full bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-600/50 text-emerald-400 font-semibold py-2 rounded transition text-sm">Deposit</button>
-    </div>
-  </div>
-  <div class="card p-5">
-    <div class="flex items-center gap-2 mb-3">
-      <span class="text-lg">📤</span>
-      <h3 class="font-bold">Withdraw</h3>
-    </div>
-    <div class="space-y-2">
-      <input type="number" id="withdraw-amount" placeholder="Amount USD" min="1" step="0.01" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-600">
-      <input type="text" id="withdraw-note" placeholder="Note (optional)" class="w-full bg-slate-800 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-600">
-      <button onclick="withdrawCash()" class="w-full bg-red-600/30 hover:bg-red-600/40 border border-red-600/50 text-red-400 font-semibold py-2 rounded transition text-sm">Withdraw</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Claude Cash Advice ── -->
-<div id="cash-advice-banner" class="cash-advice card p-4 flex items-start gap-3" style="display:none;">
-  <span class="text-xl">💡</span>
+<!-- ── Claude's Cash Advice ── -->
+<div id="cash-advice-banner" class="card p-5 flex items-start gap-4" style="display:none; border-color: rgba(251, 146, 60, 0.5); background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(217, 119, 6, 0.05) 100%);">
+  <span class="text-2xl flex-shrink-0">💡</span>
   <div class="flex-1">
-    <div class="font-semibold text-sm text-amber-300">Claude's Recommendation</div>
-    <p id="cash-advice-text" class="text-sm text-amber-100 mt-1"></p>
+    <div class="font-bold text-orange-300 text-sm mb-1">Claude's Smart Recommendation</div>
+    <p id="cash-advice-text" class="text-sm text-orange-100"></p>
   </div>
 </div>
 
 <!-- ── Performance Chart ── -->
-<div class="card p-5">
-  <div class="flex items-center justify-between mb-4">
-    <h2 class="font-bold">Portfolio Performance</h2>
-    <span class="text-xs text-slate-500">Live tracking · hover for details</span>
+<div class="card p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-xl font-bold text-cyan-300">Portfolio Performance</h2>
+    <span class="text-xs text-slate-500">Live tracking · Green = Profit, Red = Loss</span>
   </div>
-  <div class="relative h-56">
+  <div class="relative h-64 bg-slate-900/20 rounded-lg p-4">
     <canvas id="perf-chart"></canvas>
   </div>
 </div>
 
-<!-- ── Positions + Trade Feed ── -->
+<!-- ── Positions + Trades ── -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <div class="card p-5">
-    <h2 class="font-bold mb-4 flex items-center gap-2">
-      Open Positions
-      <span id="pos-count" class="text-xs text-slate-500 font-normal">{{ positions|length }} held</span>
+  <div class="card p-6">
+    <h2 class="text-lg font-bold text-cyan-300 mb-5 flex items-center gap-2">
+      📊 Open Positions
+      <span id="pos-count" class="text-sm text-slate-400 font-normal">({{ positions|length }})</span>
     </h2>
-    <div id="positions-table">
+    <div id="positions-table" class="overflow-x-auto">
       {% if positions %}
       <table class="w-full text-sm">
-        <thead class="text-xs text-slate-500 uppercase">
+        <thead class="text-xs font-semibold text-slate-400 uppercase">
           <tr>
-            <th class="text-left pb-2">Symbol</th>
-            <th class="text-right pb-2">Qty</th>
-            <th class="text-right pb-2">Cost</th>
-            <th class="text-right pb-2">Now</th>
-            <th class="text-right pb-2">P&L</th>
-            <th class="text-right pb-2">Value</th>
+            <th class="text-left pb-3">Symbol</th>
+            <th class="text-right pb-3">Qty</th>
+            <th class="text-right pb-3">Cost</th>
+            <th class="text-right pb-3">Now</th>
+            <th class="text-right pb-3">P&L</th>
+            <th class="text-right pb-3">Value</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-slate-700/50">
           {% for p in positions %}
-          <tr class="border-t border-slate-800/60">
-            <td class="py-2.5 font-mono font-bold">{{ p.symbol }}</td>
-            <td class="py-2.5 text-right font-mono text-xs">{{ '%.4g'|format(p.quantity) }}</td>
-            <td class="py-2.5 text-right font-mono text-xs text-slate-400">${{ '%.2f'|format(p.avg_cost) }}</td>
-            <td class="py-2.5 text-right font-mono text-xs">${{ '%.2f'|format(p.current_price) }}</td>
-            <td class="py-2.5 text-right font-mono text-xs {{ 'text-emerald-400' if p.pnl_usd >= 0 else 'text-red-400' }}">
+          <tr class="hover:bg-slate-700/20 transition">
+            <td class="py-3 font-mono font-bold text-cyan-300">{{ p.symbol }}</td>
+            <td class="py-3 text-right font-mono text-xs">{{ '%.4g'|format(p.quantity) }}</td>
+            <td class="py-3 text-right font-mono text-xs text-slate-400">${{ '%.2f'|format(p.avg_cost) }}</td>
+            <td class="py-3 text-right font-mono text-xs">${{ '%.2f'|format(p.current_price) }}</td>
+            <td class="py-3 text-right font-mono text-xs {{ 'glow-green' if p.pnl_usd >= 0 else 'glow-red' }}">
               {{ '{:+.2f}'.format(p.pnl_usd) }}<br><span class="text-xs opacity-70">{{ '{:+.1f}'.format(p.pnl_pct) }}%</span>
             </td>
-            <td class="py-2.5 text-right font-mono text-xs font-semibold">${{ '%.2f'|format(p.value_usd) }}</td>
+            <td class="py-3 text-right font-mono text-xs font-semibold">${{ '%.2f'|format(p.value_usd) }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <div class="text-center py-8 text-slate-600">
-        <div class="text-3xl mb-2">📭</div>
-        <div class="text-sm">No positions — waiting for Claude's first signal</div>
+      <div class="text-center py-12 text-slate-500">
+        <div class="text-4xl mb-3">📭</div>
+        <div class="text-sm">No open positions yet</div>
       </div>
       {% endif %}
     </div>
   </div>
 
-  <div class="card p-5">
-    <h2 class="font-bold mb-4">Recent Trades</h2>
-    <div id="trade-feed" class="space-y-1 max-h-72 overflow-y-auto">
+  <div class="card p-6">
+    <h2 class="text-lg font-bold text-cyan-300 mb-5">⚡ Recent Trades</h2>
+    <div id="trade-feed" class="space-y-2 max-h-96 overflow-y-auto">
       {% for t in recent_trades %}
-      <div class="trade-row flex items-center gap-2 text-xs rounded px-2 py-1.5">
-        <span class="tag-{{ t.side.lower() }} px-1.5 py-0.5 rounded text-xs font-bold w-10 text-center">{{ t.side }}</span>
-        <span class="font-mono font-bold w-12">{{ t.symbol }}</span>
+      <div class="flex items-center gap-3 text-xs rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-700/40 transition">
+        <span class="tag-{{ t.side.lower() }} px-2 py-1 rounded text-xs font-bold w-12 text-center">{{ t.side }}</span>
+        <span class="font-mono font-bold w-14 text-cyan-300">{{ t.symbol }}</span>
         <span class="text-slate-400 font-mono">{{ '%.4g'|format(t.quantity) }}×${{ '%.2f'|format(t.price) }}</span>
-        <span class="ml-auto font-mono {% if t.realized_pnl and t.realized_pnl > 0 %}text-emerald-400{% elif t.realized_pnl and t.realized_pnl < 0 %}text-red-400{% else %}text-slate-400{% endif %}">
+        <span class="ml-auto font-mono {% if t.realized_pnl and t.realized_pnl > 0 %}text-green-400{% elif t.realized_pnl and t.realized_pnl < 0 %}text-red-400{% else %}text-slate-400{% endif %}">
           {% if t.realized_pnl %}{{ '{:+.2f}'.format(t.realized_pnl) }}{% else %}${{ '%.2f'|format(t.amount_usd) }}{% endif %}
         </span>
         <span class="text-slate-600 text-xs">{{ t.executed_at.strftime('%H:%M') }}</span>
@@ -192,88 +450,75 @@
 </div>
 
 <!-- ── Claude Analysis ── -->
-<div class="card p-5">
-  <h2 class="font-bold mb-3 flex items-center gap-2">
-    <span class="w-5 h-5 rounded bg-violet-500/20 text-violet-400 text-xs flex items-center justify-center">🤖</span>
+<div class="card p-6">
+  <h2 class="text-lg font-bold text-cyan-300 mb-4 flex items-center gap-2">
+    <span class="text-2xl">🤖</span>
     Claude's Latest Analysis
     <span id="analysis-time" class="text-xs text-slate-600 font-normal ml-auto"></span>
   </h2>
-  <p id="analysis-text" class="text-slate-300 text-sm leading-relaxed">{{ last_analysis }}</p>
-  <div id="actions-list" class="mt-3 flex flex-wrap gap-2"></div>
+  <p id="analysis-text" class="text-slate-300 text-sm leading-relaxed mb-4">{{ last_analysis }}</p>
+  <div id="actions-list" class="flex flex-wrap gap-2"></div>
 </div>
 
 </div><!-- /container -->
 
 <script>
-const ctx = document.getElementById('perf-chart').getContext('2d');
-const initialCapital = {{ portfolio.total_deposited }};
+// ── Modal Functions ──
+function showPauseModal() {
+  if (document.getElementById('pause-btn').disabled) return;
+  document.getElementById('pauseModal').classList.add('show');
+}
+function closePauseModal() {
+  document.getElementById('pauseModal').classList.remove('show');
+}
+async function confirmPause() {
+  closePauseModal();
+  const res = await fetch('/api/pause', { method: 'POST' });
+  if (res.ok) {
+    showAlertModal('⏸️', 'Trading Paused', 'Claude will stop analyzing the market.');
+  }
+}
 
-const perfChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    datasets: [
-      {
-        label: 'Portfolio Value',
-        data: [],
-        borderColor: '#6ee7b7',
-        backgroundColor: 'rgba(110,231,183,0.07)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-      },
-      {
-        label: 'Starting Capital',
-        data: [],
-        borderColor: '#475569',
-        borderWidth: 1,
-        borderDash: [4,4],
-        pointRadius: 0,
-        fill: false,
-      },
-    ],
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    interaction: { intersect: false, mode: 'index' },
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: '#1e293b',
-        titleColor: '#94a3b8',
-        bodyColor: '#e2e8f0',
-        callbacks: {
-          label: ctx => ctx.datasetIndex === 0
-            ? `$${ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`
-            : `$${ctx.parsed.y.toFixed(2)} (basis)`,
-        }
-      },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
-        grid: { color: '#1e293b' },
-        ticks: { color: '#475569', maxTicksLimit: 8 },
-      },
-      y: {
-        grid: { color: '#1e293b' },
-        ticks: {
-          color: '#475569',
-          callback: v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}),
-        },
-      },
-    },
-  },
+function showResumeModal() {
+  if (document.getElementById('resume-btn').disabled) return;
+  document.getElementById('resumeModal').classList.add('show');
+}
+function closeResumeModal() {
+  document.getElementById('resumeModal').classList.remove('show');
+}
+async function confirmResume() {
+  closeResumeModal();
+  const res = await fetch('/api/resume', { method: 'POST' });
+  if (res.ok) {
+    showAlertModal('▶️', 'Trading Resumed', 'Claude is now analyzing markets again.');
+  }
+}
+
+function showAlertModal(icon, title, text) {
+  document.getElementById('alertIcon').textContent = icon;
+  document.getElementById('alertTitle').textContent = title;
+  document.getElementById('alertText').textContent = text;
+  document.getElementById('alertModal').classList.add('show');
+}
+function closeAlert() {
+  document.getElementById('alertModal').classList.remove('show');
+}
+
+// Close modals on background click
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'pauseModal') closePauseModal();
+  if (e.target.id === 'resumeModal') closeResumeModal();
+  if (e.target.id === 'alertModal') closeAlert();
 });
 
+// ── Cash Management ──
 async function depositCash() {
   const amount = parseFloat(document.getElementById('deposit-amount').value);
   const note = document.getElementById('deposit-note').value;
-  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+  if (!amount || amount <= 0) {
+    showAlertModal('❌', 'Invalid Amount', 'Please enter a positive amount.');
+    return;
+  }
 
   const res = await fetch('/api/deposit', {
     method: 'POST',
@@ -287,17 +532,20 @@ async function depositCash() {
     document.getElementById('metric-deposited').textContent = '$' + data.total_deposited.toFixed(2);
     document.getElementById('deposit-amount').value = '';
     document.getElementById('deposit-note').value = '';
-    alert('Deposit successful!');
+    showAlertModal('✅', 'Deposit Successful', `Added $${amount.toFixed(2)} to your trading capital.`);
   } else {
     const err = await res.json();
-    alert('Error: ' + (err.error || 'Unknown error'));
+    showAlertModal('❌', 'Deposit Failed', err.error || 'Unknown error');
   }
 }
 
 async function withdrawCash() {
   const amount = parseFloat(document.getElementById('withdraw-amount').value);
   const note = document.getElementById('withdraw-note').value;
-  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+  if (!amount || amount <= 0) {
+    showAlertModal('❌', 'Invalid Amount', 'Please enter a positive amount.');
+    return;
+  }
 
   const res = await fetch('/api/withdraw', {
     method: 'POST',
@@ -311,30 +559,10 @@ async function withdrawCash() {
     document.getElementById('metric-deposited').textContent = '$' + data.total_deposited.toFixed(2);
     document.getElementById('withdraw-amount').value = '';
     document.getElementById('withdraw-note').value = '';
-    alert('Withdrawal successful!');
+    showAlertModal('✅', 'Withdrawal Successful', `Withdrew $${amount.toFixed(2)} from your account.`);
   } else {
     const err = await res.json();
-    alert('Error: ' + (err.error || 'Unknown error'));
-  }
-}
-
-async function pauseTrading() {
-  const res = await fetch('/api/pause', { method: 'POST' });
-  if (res.ok) {
-    document.getElementById('pause-btn').disabled = true;
-    document.getElementById('resume-btn').disabled = false;
-    document.getElementById('status-badge').innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>PAUSED';
-    alert('Trading paused');
-  }
-}
-
-async function resumeTrading() {
-  const res = await fetch('/api/resume', { method: 'POST' });
-  if (res.ok) {
-    document.getElementById('pause-btn').disabled = false;
-    document.getElementById('resume-btn').disabled = true;
-    document.getElementById('status-badge').innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>LIVE';
-    alert('Trading resumed');
+    showAlertModal('❌', 'Withdrawal Failed', err.error || 'Unknown error');
   }
 }
 
@@ -343,12 +571,90 @@ function updateButtonStates(isRunning) {
   document.getElementById('resume-btn').disabled = isRunning;
   const badge = document.getElementById('status-badge');
   if (isRunning) {
-    badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green"></span>LIVE';
+    badge.className = 'badge-live text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
+    badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>LIVE';
   } else {
-    badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>PAUSED';
+    badge.className = 'badge-paused text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
+    badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse-amber"></span>PAUSED';
   }
 }
 
+// ── Chart Setup ──
+const ctx = document.getElementById('perf-chart').getContext('2d');
+const initialCapital = {{ portfolio.total_deposited }};
+
+const perfChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    datasets: [
+      {
+        label: 'Portfolio Value',
+        data: [],
+        borderColor: '#4ade80',
+        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 6,
+        pointBackgroundColor: '#4ade80',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+      },
+      {
+        label: 'Starting Capital',
+        data: [],
+        borderColor: '#64748b',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleColor: '#64b5f6',
+        bodyColor: '#e0e6ff',
+        borderColor: 'rgba(100, 200, 255, 0.3)',
+        borderWidth: 1,
+        padding: 12,
+        titleFont: { size: 14, weight: 'bold' },
+        bodyFont: { size: 13 },
+        callbacks: {
+          label: ctx => ctx.datasetIndex === 0
+            ? `Portfolio: $${ctx.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}`
+            : `Basis: $${ctx.parsed.y.toFixed(2)}`,
+        }
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { unit: 'minute', displayFormats: { minute: 'HH:mm' } },
+        grid: { color: 'rgba(100, 200, 255, 0.1)', drawBorder: false },
+        ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 12 } },
+      },
+      y: {
+        grid: { color: 'rgba(100, 200, 255, 0.1)', drawBorder: false },
+        ticks: {
+          color: '#64748b',
+          callback: v => '$' + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}),
+          font: { size: 12 },
+        },
+      },
+    },
+  },
+});
+
+// ── WebSocket Handler ──
 const ws = new WebSocket(`ws://${location.host}/ws`);
 
 ws.onmessage = (event) => {
@@ -359,9 +665,6 @@ ws.onmessage = (event) => {
   }
 
   const p = d.portfolio;
-  const pnlColor = p.pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
-
-  // Update button states based on is_running
   updateButtonStates(p.is_running);
 
   document.getElementById('metric-value').textContent = '$' + p.total_value.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
@@ -371,52 +674,59 @@ ws.onmessage = (event) => {
 
   const pnlEl = document.getElementById('metric-pnl');
   pnlEl.textContent = (p.pnl >= 0 ? '+' : '') + p.pnl.toFixed(2);
-  pnlEl.className = 'text-2xl font-bold font-mono ' + pnlColor;
+  pnlEl.className = 'text-3xl font-bold font-mono ' + (p.pnl >= 0 ? 'glow-green' : 'glow-red');
 
   const pnlPctEl = document.getElementById('metric-pnl-pct');
   pnlPctEl.textContent = (p.pnl_pct >= 0 ? '+' : '') + p.pnl_pct.toFixed(2) + '%';
-  pnlPctEl.className = 'text-xs mt-1 ' + pnlColor;
+  pnlPctEl.className = 'text-xs ' + (p.pnl_pct >= 0 ? 'text-green-400' : 'text-red-400');
 
+  // Positions
   if (d.positions.length === 0) {
-    document.getElementById('positions-table').innerHTML = `<div class="text-center py-8 text-slate-600"><div class="text-3xl mb-2">📭</div><div class="text-sm">No positions</div></div>`;
-    document.getElementById('pos-count').textContent = '0 held';
+    document.getElementById('positions-table').innerHTML = `<div class="text-center py-12 text-slate-600"><div class="text-4xl mb-3">📭</div><div class="text-sm">No positions yet</div></div>`;
+    document.getElementById('pos-count').textContent = '(0)';
   } else {
-    document.getElementById('pos-count').textContent = d.positions.length + ' held';
+    document.getElementById('pos-count').textContent = '(' + d.positions.length + ')';
     const rows = d.positions.map(pos => {
-      const c = pos.pnl_usd >= 0 ? 'text-emerald-400' : 'text-red-400';
-      return `<tr class="border-t border-slate-800/60"><td class="py-2.5 font-mono font-bold">${pos.symbol}</td><td class="py-2.5 text-right font-mono text-xs">${pos.quantity.toPrecision(4)}</td><td class="py-2.5 text-right font-mono text-xs text-slate-400">$${pos.avg_cost.toFixed(2)}</td><td class="py-2.5 text-right font-mono text-xs">$${pos.current_price.toFixed(2)}</td><td class="py-2.5 text-right font-mono text-xs ${c}">${(pos.pnl_usd>=0?'+':'')+pos.pnl_usd.toFixed(2)}<br><span class="text-xs opacity-70">${(pos.pnl_pct>=0?'+':'')+pos.pnl_pct.toFixed(1)}%</span></td><td class="py-2.5 text-right font-mono text-xs font-semibold">$${pos.value_usd.toFixed(2)}</td></tr>`;
+      const c = pos.pnl_usd >= 0 ? 'glow-green' : 'glow-red';
+      return `<tr class="hover:bg-slate-700/20 transition"><td class="py-3 font-mono font-bold text-cyan-300">${pos.symbol}</td><td class="py-3 text-right font-mono text-xs">${pos.quantity.toPrecision(4)}</td><td class="py-3 text-right font-mono text-xs text-slate-400">$${pos.avg_cost.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs">$${pos.current_price.toFixed(2)}</td><td class="py-3 text-right font-mono text-xs ${c}">${(pos.pnl_usd>=0?'+':'')+pos.pnl_usd.toFixed(2)}<br><span class="text-xs opacity-70">${(pos.pnl_pct>=0?'+':'')+pos.pnl_pct.toFixed(1)}%</span></td><td class="py-3 text-right font-mono text-xs font-semibold">$${pos.value_usd.toFixed(2)}</td></tr>`;
     }).join('');
-    document.getElementById('positions-table').innerHTML = `<table class="w-full text-sm"><thead class="text-xs text-slate-500 uppercase"><tr><th class="text-left pb-2">Symbol</th><th class="text-right pb-2">Qty</th><th class="text-right pb-2">Cost</th><th class="text-right pb-2">Now</th><th class="text-right pb-2">P&L</th><th class="text-right pb-2">Value</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.getElementById('positions-table').innerHTML = `<table class="w-full text-sm"><thead class="text-xs font-semibold text-slate-400 uppercase"><tr><th class="text-left pb-3">Symbol</th><th class="text-right pb-3">Qty</th><th class="text-right pb-3">Cost</th><th class="text-right pb-3">Now</th><th class="text-right pb-3">P&L</th><th class="text-right pb-3">Value</th></tr></thead><tbody class="divide-y divide-slate-700/50">${rows}</tbody></table>`;
   }
 
+  // Trades
   if (d.recent_trades.length > 0) {
     const feed = d.recent_trades.map(t => {
-      const pnlHtml = t.realized_pnl ? `<span class="ml-auto font-mono ${t.realized_pnl>0?'text-emerald-400':t.realized_pnl<0?'text-red-400':'text-slate-400'}">${(t.realized_pnl>=0?'+':'')+t.realized_pnl.toFixed(2)}</span>` : `<span class="ml-auto font-mono text-slate-400">$${t.amount_usd.toFixed(2)}</span>`;
+      const pnlHtml = t.realized_pnl ? `<span class="ml-auto font-mono ${t.realized_pnl>0?'text-green-400':t.realized_pnl<0?'text-red-400':'text-slate-400'}">${(t.realized_pnl>=0?'+':'')+t.realized_pnl.toFixed(2)}</span>` : `<span class="ml-auto font-mono text-slate-400">$${t.amount_usd.toFixed(2)}</span>`;
       const time = new Date(t.executed_at).toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
-      return `<div class="trade-row flex items-center gap-2 text-xs rounded px-2 py-1.5"><span class="tag-${t.side.toLowerCase()} px-1.5 py-0.5 rounded text-xs font-bold w-10 text-center">${t.side}</span><span class="font-mono font-bold w-12">${t.symbol}</span><span class="text-slate-400 font-mono">${t.quantity.toPrecision(4)}×$${t.price.toFixed(2)}</span>${pnlHtml}<span class="text-slate-600 text-xs">${time}</span></div>`;
+      return `<div class="flex items-center gap-3 text-xs rounded-lg px-3 py-2 bg-slate-800/30 hover:bg-slate-700/40 transition"><span class="tag-${t.side.toLowerCase()} px-2 py-1 rounded text-xs font-bold w-12 text-center">${t.side}</span><span class="font-mono font-bold w-14 text-cyan-300">${t.symbol}</span><span class="text-slate-400 font-mono">${t.quantity.toPrecision(4)}×$${t.price.toFixed(2)}</span>${pnlHtml}<span class="text-slate-600 text-xs">${time}</span></div>`;
     }).join('');
     document.getElementById('trade-feed').innerHTML = feed;
   }
 
+  // Analysis
   if (d.analysis) {
     document.getElementById('analysis-text').textContent = d.analysis;
-    document.getElementById('analysis-time').textContent = new Date(d.ts).toLocaleTimeString();
+    document.getElementById('analysis-time').textContent = 'Updated ' + new Date(d.ts).toLocaleTimeString();
   }
 
+  // Actions
   if (d.last_actions && d.last_actions.length > 0) {
     const pills = d.last_actions.map(a => {
-      const color = a.action==='BUY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : a.action==='SELL' ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-700/40 text-slate-400 border-slate-600/20';
-      return `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${color}">${a.action} ${a.symbol}${a.amount_usd?' $'+a.amount_usd.toFixed(0):''}</span>`;
+      const color = a.action==='BUY' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : a.action==='SELL' ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'bg-slate-600/20 text-slate-300 border-slate-500/40';
+      return `<span class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border ${color} font-semibold">${a.action} ${a.symbol}${a.amount_usd?' $'+a.amount_usd.toFixed(0):''}</span>`;
     }).join('');
     document.getElementById('actions-list').innerHTML = pills;
   }
 
+  // Cash advice
   if (d.cash_advice && d.cash_advice.action !== 'NONE') {
-    const msg = `${d.cash_advice.action === 'ADD' ? '➕' : '➖'} ${d.cash_advice.action} $${d.cash_advice.amount.toFixed(0)} — ${d.cash_advice.reason}`;
+    const emoji = d.cash_advice.action === 'ADD' ? '➕' : '➖';
+    const msg = `${emoji} ${d.cash_advice.action} $${d.cash_advice.amount.toFixed(0)} — ${d.cash_advice.reason}`;
     document.getElementById('cash-advice-text').textContent = msg;
     document.getElementById('cash-advice-banner').style.display = 'flex';
   }
 
+  // Chart
   const now = new Date();
   perfChart.data.datasets[0].data.push({ x: now, y: p.total_value });
   perfChart.data.datasets[1].data.push({ x: now, y: initialCapital });
@@ -424,8 +734,8 @@ ws.onmessage = (event) => {
     perfChart.data.datasets[0].data.shift();
     perfChart.data.datasets[1].data.shift();
   }
-  perfChart.data.datasets[0].borderColor = p.total_value >= initialCapital ? '#6ee7b7' : '#f87171';
-  perfChart.data.datasets[0].backgroundColor = p.total_value >= initialCapital ? 'rgba(110,231,183,0.07)' : 'rgba(248,113,113,0.07)';
+  perfChart.data.datasets[0].borderColor = p.total_value >= initialCapital ? '#4ade80' : '#ff6b6b';
+  perfChart.data.datasets[0].backgroundColor = p.total_value >= initialCapital ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255, 107, 107, 0.1)';
   perfChart.update('none');
 
   updateCountdowns(d.next_cycle_in, d.next_ai_in);
@@ -439,8 +749,9 @@ function updateCountdowns(price, ai) {
 }
 
 ws.onerror = () => {
-  document.querySelector('.badge-live').className = 'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 font-medium';
-  document.querySelector('.badge-live').innerHTML = '<span class="w-2 h-2 rounded-full bg-red-400"></span>DISCONNECTED';
+  const badge = document.getElementById('status-badge');
+  badge.className = 'badge-paused text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
+  badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>DISCONNECTED';
 };
 </script>
 </body>
