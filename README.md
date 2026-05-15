@@ -51,47 +51,122 @@ graph TB
   AnthropicAPI -->|cash_advice| Claude
 ```
 
+## 📋 Prerequisites
+
+### Required Software
+
+| Requirement | Minimum Version | Install |
+|-------------|----------------|---------|
+| **Docker Desktop** | 24.0+ | [mac](https://docs.docker.com/desktop/install/mac-install/) · [windows](https://docs.docker.com/desktop/install/windows-install/) · [linux](https://docs.docker.com/desktop/install/linux-install/) |
+| **Docker Compose** | v2.20+ (bundled with Docker Desktop) | Included with Docker Desktop |
+| **Anthropic API Key** | — | [console.anthropic.com](https://console.anthropic.com/) |
+
+> **Note:** Docker Compose v2 is required (`docker compose` not `docker-compose`). It ships bundled with Docker Desktop 4.x+. If you're on Linux without Docker Desktop, install the [Compose plugin](https://docs.docker.com/compose/install/linux/) separately.
+
+### Verify Your Install
+
+```bash
+# Both commands must succeed before continuing
+docker --version          # Docker version 24.x.x or higher
+docker compose version    # Docker Compose version v2.x.x or higher
+```
+
+### Port Requirement
+
+Port **8100** must be free on your machine. Check with:
+
+```bash
+# macOS / Linux
+lsof -i :8100
+
+# Windows (PowerShell)
+netstat -ano | findstr :8100
+```
+
+If port 8100 is in use, change the port mapping in `docker-compose.yml`:
+```yaml
+ports:
+  - "8200:8100"   # exposes on 8200 instead
+```
+
+### Anthropic API Key
+
+1. Sign up at [console.anthropic.com](https://console.anthropic.com/)
+2. Go to **API Keys** → **Create Key**
+3. Copy the key — you'll paste it during setup
+
+---
+
 ## 🚀 Quick Start
 
 ### Option 1: Automated Deployment (Recommended)
 
 ```bash
-# Clone or download the repo
-cd lgrc
+# 1. Clone the repo
+git clone https://github.com/manojbarot1/LGRC---Lets-Get-Rich-with-Crypto.git
+cd LGRC---Lets-Get-Rich-with-Crypto
 
-# Run deploy script (sets up .env, builds, starts)
+# 2. Run the deploy script — it handles everything
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
 The script will:
-- ✓ Check for Docker
-- ✓ Prompt for Anthropic API key
-- ✓ Create `.env`
+- ✓ Check that Docker is running
+- ✓ Prompt for your Anthropic API key
+- ✓ Create `.env` from the template
 - ✓ Build the Docker image
-- ✓ Start the container
-- ✓ Show you the URL
+- ✓ Start the container in the background
+- ✓ Print the dashboard URL when ready
 
 ### Option 2: Manual Setup
 
 ```bash
-# 1. Copy environment template
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# 1. Clone the repo
+git clone https://github.com/manojbarot1/LGRC---Lets-Get-Rich-with-Crypto.git
+cd LGRC---Lets-Get-Rich-with-Crypto
 
-# 2. Build Docker image
+# 2. Create your .env file from the template
+cp .env.example .env
+
+# 3. Add your Anthropic API key
+#    Open .env in any editor and set:
+#    ANTHROPIC_API_KEY=sk-ant-...
+
+# 4. Build the Docker image (takes ~1 min first time)
 docker compose build
 
-# 3. Start the simulator
+# 5. Start the simulator in the background
 docker compose up -d
 
-# 4. View logs (optional)
+# 6. Confirm the container is healthy
+docker compose ps
+
+# 7. Tail logs to watch the first trading cycle
 docker compose logs -f
 ```
 
-### 3. Open the Dashboard
+### Open the Dashboard
 
-Visit **http://localhost:8100** in your browser.
+Visit **http://localhost:8100** in your browser. The dashboard goes live within ~15 seconds of the container starting.
+
+### Stopping & Restarting
+
+```bash
+# Stop without losing data
+docker compose stop
+
+# Start again (data persists in ./data/sim.db)
+docker compose start
+
+# Stop and remove container (data still persists)
+docker compose down
+
+# Full reset — wipe trade history and start fresh
+docker compose down
+rm -f data/sim.db
+docker compose up -d
+```
 
 ## 📊 Dashboard Features
 
