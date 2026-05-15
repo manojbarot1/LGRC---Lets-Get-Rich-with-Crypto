@@ -194,8 +194,13 @@ async def _call_openai_compat(api_key: str, base_url: str, model: str, prompt: s
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": prompt},
         ],
+        # max_completion_tokens: required by Groq reasoning models (openai/gpt-oss-*)
+        # max_tokens: required by Ollama, LM Studio, and most other providers
+        # Sending both is safe — providers use whichever they understand
+        "max_completion_tokens": 4096,
         "max_tokens": 4096,
-        "temperature": 0.3,
+        # temperature omitted: reasoning models (Groq, OpenAI o-series) reject values != 1
+        # and most providers default to something sensible without it
     }
     async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(url, json=payload, headers=headers)
