@@ -1,55 +1,89 @@
 # 💎 LGRC — Let's Get Rich with Crypto
 
-> **AI-Powered Autonomous Crypto Trading Simulator**
-> 
-> Watch Claude make intelligent trading decisions in real-time, execute trades automatically, and track profits live. No manual clicking — just pure AI trading.
+> **AI-Powered Autonomous Crypto Trading Simulator — Multi-User Edition**
+>
+> Multiple users can each run their own isolated portfolio. Choose your AI provider — Claude with live web search, or any local model via Ollama / LM Studio. Fully autonomous: market research, trade decisions, and risk management happen automatically every 5 minutes.
 
-![Demo](https://img.shields.io/badge/Status-Live-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue)
+![Demo](https://img.shields.io/badge/Status-Live-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue) ![Auth](https://img.shields.io/badge/Auth-JWT-blue) ![AI](https://img.shields.io/badge/AI-Multi--Provider-purple)
+
+---
 
 ## 🎯 What It Does
 
 LGRC is an autonomous cryptocurrency trading simulator that:
 
-1. **Analyzes Markets** — Claude uses web search to find the best crypto opportunities RIGHT NOW
-2. **Executes Trades Automatically** — No manual clicking, no delay, full automation
-3. **Manages Risk** — Auto stop-loss (−5%), auto take-profit (+12%), position limits
-4. **Tracks P&L in Real-Time** — WebSocket-powered live dashboard with portfolio chart
+1. **Analyzes Markets** — AI uses web search (Claude) or live CoinGecko data (local models) to find opportunities
+2. **Executes Trades Automatically** — No manual clicking; full BUY/SELL automation with reason logging
+3. **Manages Risk** — Auto stop-loss (−5%), auto take-profit (+12%), position limits enforced on every trade
+4. **Tracks P&L in Real-Time** — WebSocket-powered live dashboard; portfolio chart restores history on refresh
 5. **Two-Speed Trading** — Fast price checks every 60s, full AI analysis every 5 minutes
-6. **Deposit/Withdraw** — Add or remove cash anytime, Claude suggests when to act
-7. **Enterprise Grade** — Production-ready: async SQLAlchemy, structured logging, error recovery
+6. **Multi-User & Isolated** — Each user registers their own account; portfolios, trades, and AI keys are private
+7. **Pluggable AI** — Switch between Anthropic Claude, Ollama, LM Studio, Jan, or any OpenAI-compatible API from the dashboard UI
 
 **Goal:** 25% weekly returns through smart momentum trading.
+
+---
 
 ## 🏗️ Architecture
 
 ```mermaid
 graph TB
-  User["👤 User Browser<br/>Dashboard + WebSocket"]
-  FastAPI["FastAPI :8100<br/>Async HTTP/WS Server"]
-  DB["SQLite DB<br/>Local File"]
-  
-  subgraph Scheduler["⚡ Two-Speed Trading Loop"]
-    Fast["🔄 FAST CYCLE<br/>every 60s<br/>• Price update<br/>• Stop-loss/profit<br/>• Broadcast"]
-    Claude["🤖 CLAUDE CYCLE<br/>every 5min<br/>• Market research<br/>• AI analysis<br/>• Trade execution"]
-    Fast -->|every 5th tick| Claude
+  subgraph Users["👥 Multiple Users"]
+    UserA["User A<br/>Browser + WS"]
+    UserB["User B<br/>Browser + WS"]
   end
-  
-  Claude -->|web search| Internet["🌐 Internet<br/>Web Search"]
-  Fast -->|prices| CoinGecko["💹 CoinGecko API<br/>Free • No key<br/>Top movers + trending"]
-  Claude -->|prices| CoinGecko
-  Claude -->|analyze| AnthropicAPI["🧠 Claude API<br/>Anthropic"]
-  
-  FastAPI -->|render| Dashboard["📊 Dashboard<br/>HTML + Tailwind<br/>Real-time charts"]
+
+  subgraph Auth["🔐 Auth Layer"]
+    Login["Login / Register<br/>/login · POST /login"]
+    JWT["JWT Cookie<br/>lgrc_session · 30d"]
+  end
+
+  FastAPI["FastAPI :8100<br/>Async HTTP/WS Server"]
+  DB["SQLite DB<br/>./data/sim.db"]
+
+  subgraph Scheduler["⚡ Two-Speed Scheduler (per portfolio)"]
+    Fast["🔄 FAST CYCLE · every 60s<br/>Price update · Stop-loss/profit · Broadcast"]
+    AIcycle["🤖 AI CYCLE · every 5min<br/>Market research · Decision · Trade · Broadcast"]
+    Fast -->|every 5th tick| AIcycle
+  end
+
+  subgraph AI["🧠 AI Providers (per user config)"]
+    Claude["Anthropic Claude<br/>+ Web Search"]
+    Local["OpenAI-Compatible<br/>Ollama · LM Studio · Jan"]
+  end
+
+  CoinGecko["💹 CoinGecko API<br/>Prices · Trending · Fear&Greed"]
+
+  Users -->|HTTPS / WS| FastAPI
+  FastAPI -->|JWT verify| Auth
   FastAPI -->|read/write| DB
-  FastAPI -->|WebSocket push| User
-  FastAPI -->|HTTP| User
-  
   Scheduler -->|record trades| DB
-  Scheduler -->|broadcast| FastAPI
-  
-  AnthropicAPI -->|market_view + actions| Claude
-  AnthropicAPI -->|cash_advice| Claude
+  Scheduler -->|broadcast per user| FastAPI
+  AIcycle -->|provider config from DB| AI
+  AI -->|web search| Internet["🌐 Internet"]
+  Fast -->|prices| CoinGecko
+  AIcycle -->|prices| CoinGecko
 ```
+
+### Data Isolation Model
+
+Each user's data is fully isolated at the database layer:
+
+```
+User (id, username, password_hash)
+ └── Portfolio (user_id → users.id)
+      ├── Position      (portfolio_id → portfolio.id)
+      ├── Trade         (portfolio_id → portfolio.id)
+      ├── CashTransaction (portfolio_id → portfolio.id)
+      ├── PortfolioSnapshot (portfolio_id → portfolio.id)
+      └── AnalysisLog   (portfolio_id → portfolio.id)
+
+AISettings (user_id → users.id)   ← per-user AI provider config
+```
+
+Queries throughout the stack always filter by `portfolio_id` or `user_id` — no data ever leaks between accounts.
+
+---
 
 ## 📋 Prerequisites
 
@@ -59,21 +93,20 @@ graph TB
 |-------------|----------------|---------|
 | **Docker Desktop** | 24.0+ | [mac](https://docs.docker.com/desktop/install/mac-install/) · [windows](https://docs.docker.com/desktop/install/windows-install/) · [linux](https://docs.docker.com/desktop/install/linux-install/) |
 | **Docker Compose** | v2.20+ (bundled with Docker Desktop) | Included with Docker Desktop |
-| **Anthropic API Key** | — | [console.anthropic.com](https://console.anthropic.com/) |
+| **Anthropic API Key** *(optional)* | — | [console.anthropic.com](https://console.anthropic.com/) |
 
-> **Note:** Docker Compose v2 is required (`docker compose` not `docker-compose`). It ships bundled with Docker Desktop 4.x+. If you're on Linux without Docker Desktop, install the [Compose plugin](https://docs.docker.com/compose/install/linux/) separately.
+> **Note:** Docker Compose v2 is required (`docker compose`, not `docker-compose`). Ships bundled with Docker Desktop 4.x+. Linux without Docker Desktop: install the [Compose plugin](https://docs.docker.com/compose/install/linux/) separately.
 
 ### Verify Your Install
 
 ```bash
-# Both commands must succeed before continuing
 docker --version          # Docker version 24.x.x or higher
 docker compose version    # Docker Compose version v2.x.x or higher
 ```
 
 ### Port Requirement
 
-Port **8100** must be free on your machine. Check with:
+Port **8100** must be free. Check with:
 
 ```bash
 # macOS / Linux
@@ -83,17 +116,20 @@ lsof -i :8100
 netstat -ano | findstr :8100
 ```
 
-If port 8100 is in use, change the port mapping in `docker-compose.yml`:
+If 8100 is in use, change the port in `docker-compose.yml`:
 ```yaml
 ports:
   - "8200:8100"   # exposes on 8200 instead
 ```
 
-### Anthropic API Key
+### AI Provider
 
-1. Sign up at [console.anthropic.com](https://console.anthropic.com/)
-2. Go to **API Keys** → **Create Key**
-3. Copy the key — you'll paste it during setup
+LGRC supports two provider types. You only need one:
+
+| Provider | What you need |
+|----------|--------------|
+| **Anthropic Claude** (recommended) | API key from [console.anthropic.com](https://console.anthropic.com/) — enables live web search |
+| **OpenAI-Compatible / Local** | A running local model server (Ollama, LM Studio, Jan, etc.) — no external key required |
 
 ---
 
@@ -106,16 +142,16 @@ ports:
 git clone https://github.com/manojbarot1/LGRC---Lets-Get-Rich-with-Crypto.git
 cd LGRC---Lets-Get-Rich-with-Crypto
 
-# 2. Run the deploy script — it handles everything
+# 2. Run the deploy script — handles .env, build, and start
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
 The script will:
 - ✓ Check that Docker is running
-- ✓ Prompt for your Anthropic API key
+- ✓ Prompt for your Anthropic API key (or leave blank for local AI)
 - ✓ Create `.env` from the template
-- ✓ Build the Docker image
+- ✓ Build the Docker image (installs all dependencies)
 - ✓ Start the container in the background
 - ✓ Print the dashboard URL when ready
 
@@ -126,29 +162,26 @@ The script will:
 git clone https://github.com/manojbarot1/LGRC---Lets-Get-Rich-with-Crypto.git
 cd LGRC---Lets-Get-Rich-with-Crypto
 
-# 2. Create your .env file from the template
+# 2. Create your .env file
 cp .env.example .env
+# Edit .env — set ANTHROPIC_API_KEY=sk-ant-... (or leave blank)
+# Optionally set SECRET_KEY=some-long-random-string
 
-# 3. Add your Anthropic API key
-#    Open .env in any editor and set:
-#    ANTHROPIC_API_KEY=sk-ant-...
+# 3. Build and start
+docker compose up -d --build
 
-# 4. Build the Docker image (takes ~1 min first time)
-docker compose build
-
-# 5. Start the simulator in the background
-docker compose up -d
-
-# 6. Confirm the container is healthy
-docker compose ps
-
-# 7. Tail logs to watch the first trading cycle
+# 4. Watch logs for first trading cycle
 docker compose logs -f
 ```
 
-### Open the Dashboard
+### First Login
 
-Visit **http://localhost:8100** in your browser. The dashboard goes live within ~15 seconds of the container starting.
+1. Visit **http://localhost:8100**
+2. You'll be redirected to the login page
+3. Click **Register** and create your account
+4. You'll land on your personal dashboard immediately
+
+Each user who registers gets their own isolated portfolio starting with the configured `STARTING_CAPITAL`.
 
 ### Stopping & Restarting
 
@@ -156,94 +189,208 @@ Visit **http://localhost:8100** in your browser. The dashboard goes live within 
 # Stop without losing data
 docker compose stop
 
-# Start again (data persists in ./data/sim.db)
+# Restart (all data intact)
 docker compose start
 
-# Stop and remove container (data still persists)
+# Stop and remove container (data persists in ./data/sim.db)
 docker compose down
 
-# Full reset — wipe trade history and start fresh
+# Full reset — wipe ALL user data and start fresh
 docker compose down
 rm -f data/sim.db
 docker compose up -d
 ```
 
+> **Note:** After a full reset, all user accounts and portfolios are deleted. Everyone must register again.
+
+---
+
+## 🔐 Authentication
+
+LGRC uses JWT-based session authentication:
+
+- **Register** — create a username + password (min 3 / 6 chars)
+- **Login** — credentials verified with bcrypt; a 30-day JWT is issued and stored in an httpOnly cookie
+- **Session** — all routes (dashboard, API, WebSocket) reject unauthenticated requests
+- **Logout** — clears the cookie; the next visit redirects to login
+
+### Changing the JWT Secret
+
+By default, a weak secret is used. For any shared deployment, set a strong one in `.env`:
+
+```env
+SECRET_KEY=replace-with-a-long-random-string-64-chars-minimum
+```
+
+---
+
+## 🧠 AI Provider Configuration
+
+Each user configures their own AI provider from the **⚙ AI** button in the dashboard navbar. Settings are stored per-user in the database — no restart needed.
+
+### Anthropic Claude (default)
+
+| Field | Value |
+|-------|-------|
+| Provider | `Anthropic Claude` |
+| API Key | `sk-ant-...` (from console.anthropic.com) |
+| Model | `claude-sonnet-4-6` (or any Claude model) |
+
+Claude gets **live web search** to research market news before deciding trades.
+
+### OpenAI-Compatible / Local AI
+
+Any server that implements the OpenAI `/chat/completions` endpoint works:
+
+| Server | Base URL | Notes |
+|--------|----------|-------|
+| **Ollama** | `http://localhost:11434/v1` | `ollama pull llama3.2` |
+| **LM Studio** | `http://localhost:1234/v1` | Enable API server in app |
+| **Jan** | `http://localhost:1337/v1` | Enable API server in app |
+| **OpenAI** | `https://api.openai.com/v1` | Use your OpenAI key |
+| **vLLM / Llamafile** | your endpoint | Any OAI-compatible server |
+
+Local models analyze the live CoinGecko data provided in the prompt (no web search). The AI prompt adapts automatically based on the selected provider.
+
+**Test Connection** verifies the settings before saving — a quick ping is sent to the configured endpoint.
+
+---
+
 ## 📊 Dashboard Features
 
-### Status Metrics (Top 5 Cards)
-- **Total Deposited** — Your capital basis
-- **Invested Now** — USD deployed in positions
-- **Available Cash** — Ready for next trade
-- **Portfolio Value** — Total holdings
-- **Total P&L** — Profit/loss vs. basis
+### Navbar (always visible)
+
+| Element | Description |
+|---------|-------------|
+| `👤 username` | Your account name (left, next to logo) |
+| `LIVE / PAUSED` | Trading loop status badge |
+| `Up: Xd Xh Xm Xs` | How long this session has been running |
+| `AI: Xm Xs` | Countdown to next AI analysis cycle |
+| `⚡ Xs` | Countdown to next price check |
+| `⚙ AI` | Open AI provider settings modal |
+| `⏸ / ▶` | Pause / resume your trading loop |
+| `Sign out` | Log out |
+
+### Status Metrics (5 cards)
+
+- **Total Deposited** — Your net capital basis (deposits minus withdrawals)
+- **Invested Now** — USD currently deployed in open positions
+- **Available Cash** — Cash ready for next trade
+- **Portfolio Value** — Total holdings (cash + positions at current price)
+- **Total P&L** — Profit/loss vs. deposited basis, with % change
 
 ### Cash Management
-- **Add Cash** — Deposit more capital anytime (market opportunity)
+
+- **Add Cash** — Deposit more capital at any time
 - **Withdraw** — Lock in profits or de-risk
-- **Claude's Advice** — AI recommends when to add/withdraw cash
+- **AI's Smart Recommendation** — The AI advises when to add or withdraw based on market conditions
 
-### Trading View
-- **Portfolio Chart** — Real-time line chart, green if profitable
-- **Open Positions** — Symbol, Qty, Cost, Current, P&L%, Value
-- **Recent Trades** — BUY/SELL tags, time, realized P&L
+### Performance Chart
 
-### AI Analysis
-- **Market View** — Claude's 2-3 sentence take on the market
-- **Action Pills** — BUY SOL, SELL XRP, HOLD ETH
-- **Next Updates** — Countdown to next price check & AI cycle
+- Line chart of portfolio value over time
+- **Persists across page refreshes** — history loaded from DB on connect
+- Green = profitable vs. deposited, Red = loss
+- Dashed baseline shows starting capital
+
+### Open Positions Table
+
+| Column | Description |
+|--------|-------------|
+| Symbol | Coin ticker |
+| Qty | Units held (4 sig figs) |
+| Cost | Average purchase price |
+| Now | Current market price |
+| P&L | Unrealized profit/loss ($  and %) |
+| Value | Current position value |
+| Opened | Date and time position was opened |
+
+### Recent Trades Feed
+
+Shows last 20 trades with: BUY/SELL tag · symbol · quantity × price · realized P&L · full date+time.
+
+### AI Analysis Panel
+
+- **Market View** — 2-3 sentence summary from the AI after each analysis cycle
+- **Action Pills** — The specific decisions made: `BUY SOL $300`, `SELL XRP`, `HOLD ETH`
+- **Claude's Cash Recommendation** — ADD or WITHDRAW suggestion with reasoning
+
+---
 
 ## ⚙️ Configuration
 
-Edit `.env` to customize:
+Edit `.env` to customize simulator behaviour:
 
 | Setting | Default | Meaning |
 |---------|---------|---------|
-| `STARTING_CAPITAL` | $1,000 | Initial sim balance |
-| `TARGET_WEEKLY_PCT` | 25% | Profit goal (for Claude context) |
-| `FAST_INTERVAL_SECONDS` | 60 | Price check interval (seconds) |
-| `CLAUDE_INTERVAL_SECONDS` | 300 | AI analysis interval (seconds) |
-| `MAX_POSITIONS` | 3 | Max open positions |
-| `MAX_POSITION_PCT` | 40% | Max % of portfolio per trade |
-| `STOP_LOSS_PCT` | 5% | Auto sell if down 5% |
-| `TAKE_PROFIT_PCT` | 12% | Auto sell if up 12% |
-| `MIN_CASH_RESERVE_PCT` | 10% | Always keep 10% cash |
+| `ANTHROPIC_API_KEY` | *(empty)* | Your Anthropic API key (can be set per-user in UI instead) |
+| `SECRET_KEY` | `lgrc-change-me-in-production` | JWT signing secret — change for shared deployments |
+| `STARTING_CAPITAL` | `1000.0` | Initial USD balance for each new user |
+| `TARGET_WEEKLY_PCT` | `25.0` | Profit target % (given to AI as context) |
+| `FAST_INTERVAL_SECONDS` | `60` | Price check + stop-loss cycle |
+| `CLAUDE_INTERVAL_SECONDS` | `300` | AI analysis + trade execution cycle |
+| `MAX_POSITIONS` | `3` | Max simultaneous open positions per user |
+| `MAX_POSITION_PCT` | `0.40` | Max portfolio % per single trade |
+| `STOP_LOSS_PCT` | `0.05` | Auto-sell if position falls 5% |
+| `TAKE_PROFIT_PCT` | `0.12` | Auto-sell if position rises 12% |
+| `MIN_CASH_RESERVE_PCT` | `0.10` | Always keep 10% cash |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./data/sim.db` | SQLite path |
 
-### Risk Rules (Enforced)
-- Never hold > 3 positions simultaneously
-- Never allocate > 40% to one trade
-- Always reserve 10% cash for volatility
-- Auto-liquidate winners at +12%, losers at −5%
+### Risk Rules (Hard-Enforced)
 
-## 🧠 How Claude Trades
+These limits are applied in `portfolio.py` regardless of what the AI decides:
 
-Each 5-minute cycle:
+- Never hold more than `MAX_POSITIONS` positions simultaneously
+- Never allocate more than `MAX_POSITION_PCT` of total portfolio value to one trade
+- Always maintain `MIN_CASH_RESERVE_PCT` in cash before any buy
+- Auto-liquidate: sell entire position when stop-loss or take-profit threshold is crossed
 
-1. **Research** — Web search for "best crypto breakouts today", trend analysis
-2. **Analyze** — Market data (top movers, 7d % change, volume, Fear & Greed index)
-3. **Decide** — BUY, SELL, or HOLD based on strategy:
-   - **Momentum** — Buy coins up 5%+ on rising volume
-   - **Reversal** — Buy dips when fear is extreme (Fear & Greed < 25)
-   - **Trend** — Add to winners with positive 7d change
-   - **News** — Buy on catalysts (regulatory approval, partnerships)
-4. **Advise** — Suggest adding/withdrawing cash if needed
-5. **Execute** — Buy/sell within risk limits, record trades
-6. **Broadcast** — Push updates to dashboard via WebSocket
+---
+
+## 🔄 How the Scheduler Works
+
+```
+Startup → AI cycle (tick 0)
+    ↓
+Every 60s:
+  if tick % 5 == 0 → AI cycle (full analysis + trades)
+  else             → Price cycle (prices + stop/take checks only)
+    ↓
+Both cycles:
+  • Iterate over ALL running portfolios concurrently (asyncio.gather)
+  • Each portfolio uses its own user's AI provider settings
+  • Broadcast result only to WebSocket connections belonging to that portfolio
+```
+
+**Fast cycle** (every 60s, ~1–2s execution time):
+1. Fetch latest prices from CoinGecko for all held symbols + top 20 movers
+2. Check every open position against stop-loss and take-profit thresholds
+3. Execute any triggered sells
+4. Record a portfolio snapshot (used for the performance chart)
+5. Broadcast to the user's WebSocket connections
+
+**AI cycle** (every 5 min, ~30–60s execution time):
+1. Everything in the fast cycle, plus:
+2. Fetch full market snapshot (top movers, trending, Fear & Greed index)
+3. Call the AI provider with a structured prompt including portfolio state + market data
+4. Parse the JSON response (BUY / SELL / HOLD actions + cash advice + market view)
+5. Execute the AI's trade decisions within risk limits
+6. Save an `AnalysisLog` row to the DB
+7. Broadcast the updated state + AI analysis text
+
+---
 
 ## 🛠️ Local Development
-
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
 
 ### Run Without Docker
 
 ```bash
-# Create SQLite DB
-python -c "from app.database import init_db; import asyncio; asyncio.run(init_db())"
+# Install dependencies
+pip install -r requirements.txt
 
-# Start FastAPI dev server
+# Init DB
+python -c "import asyncio; from app.database import init_db; asyncio.run(init_db())"
+
+# Start dev server (hot reload)
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
 ```
 
@@ -252,142 +399,239 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
 ```
 lgr-sim/
 ├── app/
-│   ├── main.py           # FastAPI app + routes
-│   ├── config.py         # Pydantic settings
-│   ├── database.py       # SQLAlchemy setup
-│   ├── models.py         # ORM models (Portfolio, Position, Trade, etc)
-│   ├── scheduler.py      # Two-speed trading loop
-│   ├── analyst.py        # Claude with web search
-│   ├── portfolio.py      # Trade execution engine
-│   ├── prices.py         # CoinGecko API integration
-│   ├── state.py          # WebSocket connection manager
-│   ├── static/           # CSS/JS (minimal, Tailwind CDN)
+│   ├── main.py           # FastAPI app: all routes, auth, WebSocket
+│   ├── auth.py           # JWT utilities: hash_password, create_token, get_current_user
+│   ├── config.py         # Pydantic settings (reads from .env)
+│   ├── database.py       # SQLAlchemy engine, session factory, init_db + migration
+│   ├── models.py         # ORM models: User, Portfolio, Position, Trade, etc.
+│   ├── scheduler.py      # Two-speed loop: iterates all running portfolios concurrently
+│   ├── analyst.py        # Multi-provider AI: Anthropic (web search) + OpenAI-compat
+│   ├── portfolio.py      # Trade execution engine: buy/sell/snapshot (portfolio-scoped)
+│   ├── prices.py         # CoinGecko API: top movers, trending, Fear & Greed index
+│   ├── state.py          # Per-portfolio WebSocket connections + live state cache
+│   ├── static/           # Static assets (minimal)
 │   └── templates/
-│       └── dashboard.html # Full reactive dashboard
+│       ├── dashboard.html  # Full reactive dashboard (Tailwind + Chart.js + WebSocket)
+│       └── login.html      # Login / Register page (same dark theme)
 ├── data/
-│   └── sim.db           # SQLite database (auto-created)
-├── Dockerfile            # Python 3.12 + FastAPI
-├── docker-compose.yml    # Single service config
-├── requirements.txt      # Python dependencies
+│   └── sim.db            # SQLite database (auto-created; gitignored)
+├── Dockerfile            # Python 3.12-slim + pip install
+├── docker-compose.yml    # Single service: port 8100, volume mounts
+├── requirements.txt      # Pinned Python dependencies
 ├── .env.example          # Configuration template
-├── .gitignore            # Git ignore rules
-├── deploy.sh             # One-command deployment
+├── deploy.sh             # One-command deployment script
 └── README.md             # This file
 ```
 
-### Key Modules
+### Key Modules Explained
 
-- **`scheduler.py`** — Runs the two-speed loop (fast + Claude cycles)
-- **`analyst.py`** — Calls Claude with web search to decide trades
-- **`portfolio.py`** — Execute buy/sell, apply stop-loss/take-profit, record snapshots
-- **`prices.py`** — Fetch live prices from CoinGecko + Fear & Greed index
-- **`state.py`** — Manage WebSocket connections, broadcast updates
-- **`main.py`** — FastAPI routes: dashboard, WebSocket, deposit/withdraw, control
+**`auth.py`**
+- `hash_password(plain)` / `verify_password(plain, hashed)` — bcrypt via passlib (pinned to bcrypt 3.x)
+- `create_token(user_id, username)` — signs a 30-day JWT with the `SECRET_KEY`
+- `decode_token(token)` — verifies and decodes; returns `None` on any error
+- `get_current_user(request, session)` — reads `lgrc_session` cookie, decodes JWT, queries User row
 
-## 📈 Example Trading Session
+**`analyst.py`**
+- `_build_prompt(...)` — constructs a structured trading prompt; task section adapts for web-search vs. data-only
+- `_call_anthropic(api_key, model, prompt)` — uses Anthropic SDK with web-search beta; falls back to plain message if beta unavailable
+- `_call_openai_compat(api_key, base_url, model, prompt)` — pure `httpx` POST to `/chat/completions`; no extra dependency
+- `_extract_json(text)` — robust JSON extraction: tries direct parse, code block, then scans from last `{` backwards (handles preamble text from web-search responses)
+- `analyze_and_decide(...)` — dispatches to the right provider based on `ai_config`
 
-**Cycle 1 (t=0s):** Claude sees BTC +2.4%, XRP +0.5%, strong volume on SOL
-→ BUY XRP $300, reason: "SEC lawsuit ended, banking partnerships"
+**`portfolio.py`**
+Every function is scoped to a specific portfolio:
+- `get_positions(session, portfolio_id)` — only returns positions belonging to that portfolio
+- `execute_buy/sell(session, portfolio, ...)` — creates Position and Trade rows with `portfolio_id`
+- `record_snapshot(session, portfolio, prices)` — saves PortfolioSnapshot with `portfolio_id` (drives the chart)
 
-**Cycle 2 (t=60s):** Fast check → XRP up to $1.47 → positions updated, no stops triggered
+**`state.py`**
+- `_connections: dict[int, list[WebSocket]]` — maps `portfolio_id → [ws1, ws2, ...]`
+- `ws_connect(ws, portfolio_id)` — accepts the WebSocket and registers it under the portfolio
+- `broadcast_update(session, portfolio, ...)` — sends only to the portfolio's connections; queries trades/history filtered by `portfolio_id`
+- Per-portfolio caches: `last_analysis[portfolio_id]`, `last_actions[portfolio_id]`, `last_cash_advice[portfolio_id]`
 
-**Cycle 3 (t=120s):** Fast check → XRP still good, +0.1%, no action
+**`scheduler.py`**
+- `_run_all(cycle_fn)` — fetches all running portfolio IDs in one query, then fires `asyncio.gather(*[cycle_fn(pid) for pid in ids])`
+- Each cycle fetches the user's `AISettings` from DB to pick the right provider
+- Exceptions in one portfolio's cycle don't affect others
 
-**Cycle 4 (t=180s):** Fast check → trigger stop-loss on old BTC position (down −5.2%)
-
-**Cycle 5 (t=240s):** Fast check → countdown...
-
-**Cycle 6 (t=300s):** Claude runs! Sees Fear & Greed at 72 (greed territory), SOL breaking above $91 resistance
-→ BUY SOL $300, SELL XRP (take profit +8%), suggests WITHDRAW $100 "lock in gains, market overheated"
-
-**Dashboard shows:**
-```
-Portfolio: $1,000 → $1,050 (+5%)
-Positions: SOL (3.3 units @ $91), no XRP
-Cash: $400 (ready for next opportunity)
-Next AI cycle: 4m50s
-Claude advice: Withdraw $100 ✓
-```
+---
 
 ## 🔌 API Endpoints
 
-### HTTP
+### Auth
 
-- `GET /` — Render dashboard with current state
-- `GET /health` — Healthcheck (used by Docker, CI/CD)
-- `POST /api/deposit` — Deposit cash (body: `{amount: float, note: string}`)
-- `POST /api/withdraw` — Withdraw cash (body: `{amount: float, note: string}`)
-- `POST /api/pause` — Pause trading loop
-- `POST /api/resume` — Resume trading loop
-- `POST /api/reset` — Reset portfolio (keeps trade history)
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/login` | Login / register page |
+| `POST` | `/login` | Submit login or register form |
+| `POST` | `/logout` | Clear session cookie → redirect to `/login` |
 
-### WebSocket
+### Dashboard
 
-- `WS /ws` — Live updates
-  - **Ping** (every 1s): `{type: "ping", next_cycle_in, next_ai_in}`
-  - **Full update** (per cycle): `{portfolio, positions, trades, analysis, cash_advice, ...}`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/` | ✓ | Render dashboard for current user |
+| `WS` | `/ws` | ✓ | WebSocket: pings every 1s + full updates per cycle |
+| `GET` | `/health` | — | Container health check |
+
+### Portfolio API (all require auth cookie)
+
+| Method | Path | Body | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/deposit` | `{amount, note}` | Add cash to portfolio |
+| `POST` | `/api/withdraw` | `{amount, note}` | Withdraw cash |
+| `POST` | `/api/pause` | — | Pause trading loop for this user |
+| `POST` | `/api/resume` | — | Resume trading loop |
+| `POST` | `/api/reset` | — | Close all positions, reset cash |
+
+### AI Settings API (all require auth cookie)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/settings/ai` | Get current AI config (key masked) |
+| `POST` | `/api/settings/ai` | Save AI provider config |
+| `POST` | `/api/settings/ai/test` | Test connection without saving |
+
+**WebSocket payload** (sent on every full cycle):
+```json
+{
+  "portfolio": { "cash", "total_value", "pnl", "pnl_pct", "is_running", "started_at", ... },
+  "positions": [{ "symbol", "quantity", "avg_cost", "current_price", "pnl_usd", "pnl_pct", "value_usd", "opened_at" }],
+  "recent_trades": [{ "symbol", "side", "quantity", "price", "amount_usd", "realized_pnl", "executed_at" }],
+  "history": [{ "t": "ISO datetime", "v": portfolio_value }],
+  "analysis": "AI market view text",
+  "last_actions": [{ "action", "symbol", "amount_usd", "reason" }],
+  "cash_advice": { "action": "ADD|WITHDRAW|NONE", "amount", "reason" },
+  "next_cycle_in": 45,
+  "next_ai_in": 240,
+  "ts": "ISO UTC timestamp"
+}
+```
+
+---
 
 ## 📦 Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `fastapi` | Web framework |
-| `uvicorn` | ASGI server |
-| `sqlalchemy` | ORM + async |
-| `aiosqlite` | Async SQLite |
-| `anthropic` | Claude API |
-| `httpx` | Async HTTP (web search) |
-| `pydantic-settings` | Config management |
-| `structlog` | Structured logging |
-| `jinja2` | Template rendering |
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `fastapi` | 0.115.5 | Web framework + OpenAPI |
+| `uvicorn[standard]` | 0.32.1 | ASGI server |
+| `sqlalchemy` | 2.0.36 | Async ORM |
+| `aiosqlite` | 0.20.0 | Async SQLite driver |
+| `anthropic` | 0.40.0 | Claude API SDK |
+| `httpx` | 0.28.1 | Async HTTP (OpenAI-compat calls + prices) |
+| `pydantic-settings` | 2.6.1 | Config from env |
+| `structlog` | 24.4.0 | Structured JSON logging |
+| `jinja2` | 3.1.4 | Server-side template rendering |
+| `python-multipart` | 0.0.12 | Form data parsing (login) |
+| `passlib[bcrypt]` | 1.7.4 | Password hashing |
+| `bcrypt` | **3.2.2** | Hashing backend (pinned — passlib incompatible with bcrypt 4+) |
+| `pyjwt` | 2.9.0 | JWT creation and verification |
+
+---
 
 ## 🔒 Security
 
-- API key stored in `.env` (not in code)
-- SQLite local only (no remote DB)
-- No authentication needed (local simulator)
-- Trades auto-limited by risk rules (can't lose more than configured)
+- Passwords hashed with bcrypt (cost factor 12) — never stored in plain text
+- JWT tokens stored in `httpOnly, SameSite=Lax` cookies — not accessible to JavaScript
+- Every API endpoint and WebSocket verifies the JWT before proceeding
+- API keys stored in the local SQLite database — never logged, never transmitted except to the configured provider
+- SQLite is local-only; no network-accessible database
+- All DB queries filtered by `user_id` / `portfolio_id` — no cross-user data access
 
-For production deployment, add:
-- Authentication (OAuth2/JWT)
-- HTTPS (SSL certificates)
-- Environment separation (dev/prod)
+**For shared/production deployments:**
+- Set a strong `SECRET_KEY` in `.env`
+- Add HTTPS (reverse proxy with nginx/Caddy + Let's Encrypt)
+- Consider restricting registration (add an `INVITE_CODE` env var check)
+
+---
 
 ## 🐛 Troubleshooting
 
-### Container won't start
+### Internal Server Error on first visit
+The container image must be rebuilt when `requirements.txt` changes:
+```bash
+docker compose down && docker compose up -d --build
+```
+Never `docker compose up -d` alone after dependency changes — the source files update via volume mount but packages do not.
+
+### Registration fails / bcrypt error
+Ensure `bcrypt==3.2.2` is pinned in `requirements.txt`. `passlib 1.7.4` is incompatible with `bcrypt 4+`.
+
+### Dashboard shows "DISCONNECTED"
+- Check browser console for WebSocket errors
+- Verify port 8100 is not blocked by firewall
+- Restart: `docker compose restart`
+
+### AI not making trades
+```bash
+docker compose logs -f | grep analyst
+```
+- Verify the API key is set (UI: ⚙ AI → Test Connection)
+- For Claude: check the key at [console.anthropic.com](https://console.anthropic.com/)
+- For local AI: ensure the server is running and the base URL is reachable from inside Docker (`host.docker.internal` instead of `localhost` on Mac/Windows)
+
+### Local AI unreachable from container
+Docker containers can't reach `localhost` on the host. Use:
+- Mac/Windows: `http://host.docker.internal:11434/v1`
+- Linux: `http://172.17.0.1:11434/v1` (or your docker bridge IP)
+
+### High CPU usage
+Normal during Claude's web search (30–60s per analysis cycle). The two-speed design means price checks (60s interval) are fast; only the 5-minute AI cycle is slow.
+
+### Need to wipe all data and start fresh
 ```bash
 docker compose down
 rm -f data/sim.db
 docker compose up -d
 ```
+All user accounts and portfolios are deleted. Re-register after restart.
 
-### Dashboard shows "DISCONNECTED"
-- Check browser console for WebSocket errors
-- Verify port 8100 is not blocked by firewall
-- Restart container: `docker compose restart`
+---
 
-### Claude not making trades
-- Check logs: `docker compose logs -f | grep analyst`
-- Verify API key in `.env` is valid
-- Check market data: `curl http://localhost:8100/health`
+## 📈 Example Trading Session
 
-### High CPU usage
-- Normal during Claude's web search (30-35s per analysis)
-- Two-speed design mitigates this (price checks are fast)
+```
+t=0   AI cycle: BTC +2.4%, SOL strong volume, Fear & Greed 58
+      → BUY SOL $350 @ $91.20 — "momentum breakout, volume +40%"
+      → BUY XRP $250 @ $1.42 — "SEC clarity, bullish trend"
+
+t=60  Price cycle: SOL $92.10 (+0.99%), XRP $1.43 (+0.70%)
+      No stop/take triggers. Portfolio: $1,025 (+2.5%)
+
+t=180 Price cycle: XRP drops to $1.35 (−4.93%)
+      → SELL XRP (stop-loss triggered at −4.9%)  realized P&L: −$12
+
+t=300 AI cycle: SOL now $94.80 (+3.9% from cost)
+      → HOLD SOL — "still in uptrend, BTC correlation positive"
+      → BUY ETH $280 @ $1,850 — "ETH lagging SOL, catch-up likely"
+      Cash advice: "NONE — good deployment level"
+
+t=600 AI cycle: SOL $98.50 (+8.0% from cost — near take-profit)
+      → Fast cycle fires take-profit: SELL SOL @ $98.50  realized P&L: +$27
+```
+
+---
 
 ## 🤝 Contributing
 
 Improvements welcome! Some ideas:
 - Additional risk models (Kelly criterion, Sharpe ratio)
 - More data sources (on-chain metrics, social sentiment)
-- Backtesting engine
-- Multi-exchange support (Binance API, etc)
-- Export CSV reports
+- Backtesting engine (replay historical prices)
+- Multi-exchange support (Binance API, etc.)
+- Export CSV trade reports
+- Admin panel to manage users
+- Invite-code registration to restrict signups
+
+---
 
 ## 📄 License
 
 MIT License — use freely, fork, modify.
+
+---
 
 ## 🎓 Learn More
 
@@ -395,9 +639,10 @@ MIT License — use freely, fork, modify.
 - [CoinGecko API](https://www.coingecko.com/api/documentation)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [SQLAlchemy Async](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
+- [Ollama](https://ollama.ai/) · [LM Studio](https://lmstudio.ai/) · [Jan](https://jan.ai/)
 
 ---
 
-**Made with ❤️ by autonomous traders everywhere.**
+**Made with ❤️ and a healthy appetite for crypto gains.**
 
-Built for the week of May 15, 2026. May the profits be ever in your favor. 🚀
+Built May 2026. May the profits be ever in your favor. 🚀

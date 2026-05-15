@@ -353,27 +353,30 @@
 <!-- ── Header/Nav ── -->
 <nav class="glass sticky top-0 z-20 border-b border-slate-700/50">
   <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-4">
       <div class="text-3xl font-bold neon-glow">💎</div>
       <div>
         <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">LGRC</h1>
         <p class="text-xs text-slate-400">Let's Get Rich with Crypto</p>
       </div>
+      <span class="text-xs px-3 py-1 rounded-full font-semibold font-mono"
+        style="background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.4); color:#a5b4fc;">
+        👤 {{ user.username }}
+      </span>
     </div>
-    <div class="flex items-center gap-5">
-      <span id="status-badge" class="badge-live text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>
+    <div class="flex items-center gap-3">
+      <span id="status-badge" class="badge-live text-xs px-3 py-1.5 rounded-full flex items-center gap-2 font-semibold">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-g"></span>
         LIVE
       </span>
-      <span class="text-xs text-slate-400">Up: <span id="uptime" class="text-cyan-300 font-mono font-bold">0m 0s</span></span>
-      <span class="text-xs text-slate-400">Price: <span id="next-price" class="text-cyan-300 font-mono font-bold">60s</span></span>
-      <span class="text-xs text-slate-400">AI: <span id="next-ai" class="text-cyan-300 font-mono font-bold">4m30s</span></span>
-      <span class="text-xs text-slate-400 font-mono">{{ user.username }}</span>
-      <button onclick="openSettingsModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-slate-700/50 to-slate-600/50 text-slate-300 hover:from-slate-600/60 hover:to-slate-500/60 border border-slate-500/30 transition font-semibold btn">⚙ AI</button>
-      <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸ Pause</button>
-      <button id="resume-btn" onclick="showResumeModal()" class="text-xs px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600/30 to-green-600/30 text-emerald-300 hover:from-emerald-600/50 hover:to-green-600/50 border border-emerald-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn" disabled>▶ Resume</button>
+      <span class="text-xs text-slate-500">Up:<span id="uptime" class="text-cyan-300 font-mono font-bold ml-1">0m 0s</span></span>
+      <span class="text-xs text-slate-500">AI:<span id="next-ai" class="text-cyan-300 font-mono font-bold ml-1">--</span></span>
+      <span class="text-xs text-slate-500">⚡<span id="next-price" class="text-cyan-300 font-mono font-bold ml-0.5">--</span></span>
+      <button onclick="openSettingsModal()" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-slate-700/50 to-slate-600/50 text-slate-300 hover:from-slate-600/60 hover:to-slate-500/60 border border-slate-500/30 transition font-semibold btn">⚙ AI</button>
+      <button id="pause-btn" onclick="showPauseModal()" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-600/30 to-orange-600/30 text-amber-300 hover:from-amber-600/50 hover:to-orange-600/50 border border-amber-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn">⏸</button>
+      <button id="resume-btn" onclick="showResumeModal()" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600/30 to-green-600/30 text-emerald-300 hover:from-emerald-600/50 hover:to-green-600/50 border border-emerald-500/30 transition enabled:opacity-100 disabled:opacity-30 disabled:cursor-not-allowed font-semibold btn" disabled>▶</button>
       <form method="POST" action="/logout" style="display:inline;">
-        <button type="submit" class="text-xs px-4 py-2 rounded-lg bg-slate-800/50 text-slate-500 hover:text-slate-300 border border-slate-700/40 transition font-semibold btn">Sign out</button>
+        <button type="submit" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-slate-700/40 transition font-semibold btn">Sign out</button>
       </form>
     </div>
   </div>
