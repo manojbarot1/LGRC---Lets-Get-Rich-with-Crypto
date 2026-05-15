@@ -267,14 +267,16 @@ Sign up free at [console.groq.com](https://console.groq.com) — no credit card 
 
 Free tier: **14,400 requests/day** — LGRC uses ~288/day at most, so you'll never hit the limit.
 
-**Other good Groq models:**
+> **Note:** Groq does **not** include web search — only Anthropic Claude has that. Groq analyses the live CoinGecko market data provided in the prompt (prices, Fear & Greed index, trending coins).
+
+**Available Groq models:**
 
 | Model | Notes |
 |-------|-------|
 | `llama-3.3-70b-versatile` | Best overall (recommended) |
 | `gemma2-9b-it` | Lighter, very fast |
 | `gemma2-29b-it` | Smarter but slower |
-| `openai/gpt-oss-120b` | OpenAI-compatible reasoning model on Groq |
+| `openai/gpt-oss-120b` | Reasoning model — very capable |
 | `mixtral-8x7b-32768` | Longer context window |
 
 ---
@@ -290,24 +292,11 @@ Get a free key at [aistudio.google.com](https://aistudio.google.com) → Get API
 | API Key | your Gemini key |
 | Model | `gemini-1.5-flash` |
 
-Free tier: 15 requests/minute — sufficient for the 5-minute AI cycle.
+Free tier: 15 requests/minute — sufficient for the 5-minute AI cycle. No web search.
 
 ---
 
-### Option 4 — OpenRouter (free models available)
-
-Sign up at [openrouter.ai](https://openrouter.ai) — several models are permanently free.
-
-| Field | Value |
-|-------|-------|
-| Provider | `OpenAI Compatible` |
-| Base URL | `https://openrouter.ai/api/v1` |
-| API Key | your OpenRouter key |
-| Model | `mistralai/mistral-7b-instruct:free` |
-
----
-
-### Option 5 — Ollama (completely free, runs locally)
+### Option 4 — Ollama (completely free, runs locally)
 
 No API key, no limits, no internet required for inference. Needs a modern Mac/PC.
 
@@ -330,20 +319,6 @@ ollama pull llama3.2
 > **Note:** Use `host.docker.internal` (not `localhost`) — Docker containers can't reach `localhost` on your machine directly. On Linux use `http://172.17.0.1:11434/v1` instead.
 
 Other Ollama models to try: `mistral`, `llama3.1`, `phi3`, `qwen2.5`
-
----
-
-### Provider Comparison
-
-| Provider | Cost | Speed | Quality | Web Search |
-|----------|------|-------|---------|------------|
-| Anthropic Claude | Paid | Medium (30–60s with search) | ⭐⭐⭐⭐⭐ | ✅ Yes |
-| Groq | Free | Fast (1–3s) | ⭐⭐⭐⭐ | ❌ No |
-| Google Gemini | Free | Fast (2–5s) | ⭐⭐⭐⭐ | ❌ No |
-| OpenRouter (free) | Free | Medium | ⭐⭐⭐ | ❌ No |
-| Ollama (local) | Free | Varies | ⭐⭐⭐ | ❌ No |
-
-All providers without web search still get **live CoinGecko price data** (top 20 movers, Fear & Greed index, trending coins) — the AI prompt is adapted automatically.
 
 ---
 
