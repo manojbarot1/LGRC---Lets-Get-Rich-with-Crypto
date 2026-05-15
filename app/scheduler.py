@@ -105,6 +105,18 @@ async def _run_claude_cycle(portfolio_id: int) -> None:
             portfolio.current_cash, pos_dicts, market, settings_dict, ai_config
         )
 
+        # Fetch prices for any BUY symbols the AI suggested that aren't in our
+        # current price dict (AI may pick coins outside the top-20 movers list)
+        missing = [
+            a["symbol"].upper() for a in decision.get("actions", [])
+            if a.get("action", "").upper() == "BUY"
+            and a.get("symbol", "").upper() not in prices
+        ]
+        if missing:
+            extra = await get_prices_for_symbols(missing)
+            prices.update(extra)
+            log.info("scheduler.fetched_extra_prices", symbols=missing, portfolio_id=portfolio_id)
+
         claude_trades = await apply_claude_actions(
             session, portfolio, decision.get("actions", []),
             prices, settings.max_positions,

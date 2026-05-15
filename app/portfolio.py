@@ -189,14 +189,22 @@ async def apply_claude_actions(
 
         if act == "BUY":
             if pos_count >= max_positions and symbol not in pos_symbols:
+                log.info("trade.skipped", reason="max_positions", symbol=symbol)
                 continue
             max_allowed = total_value * max_position_pct
             available = portfolio.current_cash - total_value * min_cash_reserve_pct
             if available < 1.0:
+                log.info("trade.skipped", reason="cash_reserve", symbol=symbol, available=round(available, 2))
                 continue
-            amount = min(float(action.get("amount_usd", 0)), max_allowed, available)
-            t = await execute_buy(session, portfolio, symbol, amount,
-                                  prices.get(symbol, 0.0), reason)
+            price = prices.get(symbol, 0.0)
+            if price <= 0:
+                log.info("trade.skipped", reason="no_price", symbol=symbol)
+                continue
+            amount = min(float(action.get("amount_usd", 0) or 0), max_allowed, available)
+            if amount < 1.0:
+                log.info("trade.skipped", reason="amount_zero", symbol=symbol, amount_usd_from_ai=action.get("amount_usd"))
+                continue
+            t = await execute_buy(session, portfolio, symbol, amount, price, reason)
             if t:
                 trades.append(t)
                 if symbol not in pos_symbols:
@@ -204,8 +212,12 @@ async def apply_claude_actions(
                     pos_symbols.add(symbol)
 
         elif act == "SELL":
+            price = prices.get(symbol, 0.0)
+            if price <= 0:
+                log.info("trade.skipped", reason="no_price", symbol=symbol)
+                continue
             t = await execute_sell(session, portfolio, symbol,
-                                   action.get("quantity"), prices.get(symbol, 0.0), reason)
+                                   action.get("quantity"), price, reason)
             if t:
                 trades.append(t)
 
