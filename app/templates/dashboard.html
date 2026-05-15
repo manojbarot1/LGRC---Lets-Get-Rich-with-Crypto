@@ -719,6 +719,12 @@ const ctx = document.getElementById('perf-chart').getContext('2d');
 const initialCapital = {{ portfolio.total_deposited }};
 let _chartLoaded = false;
 
+// Pre-load chart from server-rendered history so it's never blank on refresh
+const _serverHistory = {{ chart_history | tojson }};
+if (_serverHistory.length > 0) {
+  _chartLoaded = true; // prevent WebSocket first-message from overwriting
+}
+
 const perfChart = new Chart(ctx, {
   type: 'line',
   data: {
@@ -781,6 +787,8 @@ const perfChart = new Chart(ctx, {
         ticks: { color: '#64748b', maxTicksLimit: 8, font: { size: 12 } },
       },
       y: {
+        suggestedMin: initialCapital * 0.95,
+        suggestedMax: initialCapital * 1.05,
         grid: { color: 'rgba(100, 200, 255, 0.1)', drawBorder: false },
         ticks: {
           color: '#64748b',
@@ -791,6 +799,16 @@ const perfChart = new Chart(ctx, {
     },
   },
 });
+
+// Seed chart immediately from server-rendered history (no blank state on refresh)
+if (_serverHistory.length > 0) {
+  perfChart.data.datasets[0].data = _serverHistory.map(h => ({ x: new Date(h.t), y: h.v }));
+  perfChart.data.datasets[1].data = _serverHistory.map(h => ({ x: new Date(h.t), y: initialCapital }));
+  const lastVal = _serverHistory[_serverHistory.length - 1].v;
+  perfChart.data.datasets[0].borderColor = lastVal >= initialCapital ? '#4ade80' : '#ff6b6b';
+  perfChart.data.datasets[0].backgroundColor = lastVal >= initialCapital ? 'rgba(74,222,128,0.1)' : 'rgba(255,107,107,0.1)';
+  perfChart.update('none');
+}
 
 // ── WebSocket Handler ──
 const ws = new WebSocket(`ws://${location.host}/ws`);

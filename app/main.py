@@ -14,7 +14,7 @@ from app import state
 from app.auth import COOKIE, create_token, get_current_user, hash_password, redirect_to_login, verify_password
 from app.config import get_settings
 from app.database import get_session, get_session_factory, init_db
-from app.models import AISettings, AnalysisLog, Portfolio, Trade, User
+from app.models import AISettings, AnalysisLog, Portfolio, PortfolioSnapshot, Trade, User
 from app.portfolio import (
     deposit_cash, get_or_create_portfolio, get_positions,
     record_snapshot, withdraw_cash,
@@ -144,6 +144,17 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_sessio
         .limit(1)
     )).scalar_one_or_none()
 
+    snapshots = (await session.execute(
+        select(PortfolioSnapshot)
+        .where(PortfolioSnapshot.portfolio_id == portfolio.id)
+        .order_by(desc(PortfolioSnapshot.recorded_at))
+        .limit(200)
+    )).scalars().all()
+    chart_history = [
+        {"t": s.recorded_at.isoformat(), "v": s.total_value}
+        for s in reversed(snapshots)
+    ]
+
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "user": user,
@@ -171,6 +182,7 @@ async def dashboard(request: Request, session: AsyncSession = Depends(get_sessio
         "recent_trades": recent_trades,
         "last_analysis": last_log.market_view if last_log else state.last_analysis.get(portfolio.id, "Waiting for first analysis cycle…"),
         "started_at": portfolio.started_at.isoformat() if portfolio.started_at else "",
+        "chart_history": chart_history,
     })
 
 
