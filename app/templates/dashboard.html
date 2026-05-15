@@ -287,7 +287,7 @@
       <div class="text-3xl font-bold neon-glow">💎</div>
       <div>
         <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-300 via-blue-400 to-purple-500 bg-clip-text text-transparent">LGRC</h1>
-        <p class="text-xs text-slate-400">Autonomous Crypto Trading AI</p>
+        <p class="text-xs text-slate-400">Let's Get Rich with Crypto</p>
       </div>
     </div>
     <div class="flex items-center gap-5">
@@ -475,7 +475,15 @@ async function confirmPause() {
   closePauseModal();
   const res = await fetch('/api/pause', { method: 'POST' });
   if (res.ok) {
+    // Update button states immediately
+    document.getElementById('pause-btn').disabled = true;
+    document.getElementById('resume-btn').disabled = false;
+    const badge = document.getElementById('status-badge');
+    badge.className = 'badge-paused text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
+    badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-orange-400 animate-pulse-amber"></span>PAUSED';
     showAlertModal('⏸️', 'Trading Paused', 'Claude will stop analyzing the market.');
+  } else {
+    showAlertModal('❌', 'Error', 'Failed to pause trading');
   }
 }
 
@@ -490,7 +498,15 @@ async function confirmResume() {
   closeResumeModal();
   const res = await fetch('/api/resume', { method: 'POST' });
   if (res.ok) {
+    // Update button states immediately
+    document.getElementById('pause-btn').disabled = false;
+    document.getElementById('resume-btn').disabled = true;
+    const badge = document.getElementById('status-badge');
+    badge.className = 'badge-live text-xs px-4 py-2 rounded-full flex items-center gap-2 font-semibold';
+    badge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-g"></span>LIVE';
     showAlertModal('▶️', 'Trading Resumed', 'Claude is now analyzing markets again.');
+  } else {
+    showAlertModal('❌', 'Error', 'Failed to resume trading');
   }
 }
 
