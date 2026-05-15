@@ -470,6 +470,77 @@ Both cycles:
 
 ---
 
+## 📡 Price Data — Where It Comes From
+
+LGRC uses **two free APIs** to get market data. No API keys required for either.
+
+### 1 — CoinGecko (prices, movers, trending)
+
+**Base URL:** `https://api.coingecko.com/api/v3` — free public API, no key needed.
+
+Three endpoints are called each AI cycle (all in parallel):
+
+| Endpoint | What it returns | Used for |
+|----------|----------------|----------|
+| `/coins/markets?order=percent_change_24h_desc` | Top 30 coins by 24h % change with 1h / 24h / 7d change and volume | Main market data fed to the AI |
+| `/search/trending` | Top 7 most-searched coins in the last 24h | Trend awareness in the AI prompt |
+| `/simple/price?ids=...` | Spot price in USD for a list of CoinGecko IDs | Price lookups for held positions and on-demand fetches |
+
+**What the AI receives for each coin:**
+```
+BTC    $103,450.00 | 1h:+0.3% | 24h:+2.1% | 7d:+8.4% | Vol:$42,000M
+SOL      $91.20    | 1h:+1.2% | 24h:+5.3% | 7d:+12.1% | Vol:$3,200M
+...
+Trending: WIF(dogwifcoin), PEPE(PepeCoin), JUP(Jupiter)...
+```
+
+### 2 — Alternative.me (Fear & Greed Index)
+
+**URL:** `https://api.alternative.me/fng/` — free, no key needed.
+
+Returns a single value (0–100) and a label:
+
+| Range | Label | Trading signal in LGRC |
+|-------|-------|----------------------|
+| 0–24 | Extreme Fear | AI considers buying dips |
+| 25–49 | Fear | Cautious but open to entries |
+| 50–74 | Greed | Normal trading |
+| 75–100 | Extreme Greed | AI considers taking profits |
+
+### Supported Coins
+
+LGRC maintains a symbol → CoinGecko ID map for **30 coins**. Only these can be traded:
+
+```
+BTC  ETH  BNB  SOL  XRP  ADA  DOGE  AVAX  LINK  DOT
+MATIC  UNI  LTC  ATOM  NEAR  SUI  APT  ARB  OP  INJ
+PEPE  SHIB  TRX  TON  FIL  SEI  TIA  JUP  WIF  BONK
+```
+
+If the AI suggests a coin not in this list, the trade is skipped with a `no_price` log entry. To add more coins, extend `SYMBOL_TO_CG` in [app/prices.py](app/prices.py).
+
+### How Price Fetching Works Per Cycle
+
+```
+Fast cycle (every 60s):
+  1. get_positions() → symbols of held coins
+  2. get_top_movers(20) → top 20 by 24h change
+  3. get_prices_for_symbols(held + top20) → spot prices for all
+
+AI cycle (every 5min), additionally:
+  4. get_market_snapshot() → top_movers + trending + fear_greed (parallel)
+  5. After AI returns actions:
+     if any BUY symbol is missing from price dict →
+       get_prices_for_symbols([missing symbols]) → on-demand fetch
+     (prevents trades being silently skipped for coins outside top 20)
+```
+
+### Rate Limits
+
+CoinGecko's free public API allows ~30 requests/minute. LGRC makes 3–5 requests per AI cycle and 1–2 per fast cycle, well within limits. If you see `prices.top_movers_failed` in logs, CoinGecko is temporarily rate-limiting — the cycle retries in 60 seconds automatically.
+
+---
+
 ## 🛠️ Local Development
 
 ### Run Without Docker
